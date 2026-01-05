@@ -84,12 +84,15 @@
     }
 
     input[type="password"] {
-      width: 100%;
+      width: 90%;
+      max-width: 360px;
       padding: 12px;
       font-size: 16px;
-      border-radius: 8px;
+      border-radius: 10px;
       border: 1px solid #ccc;
-      margin-top: 6px;
+      margin: 12px auto 6px auto;
+      display: block;
+      box-sizing: border-box;
     }
 
     table {
@@ -118,7 +121,8 @@
 </head>
 <body>
 
-<h1>아파트 투표 (1반–8반)</h1>
+<h1>5학년 아파트 투표</h1>
+<p style="color:#c62828; font-weight:bold; margin-top:6px;">* 교사당 1회만 투표해 주세요 *</p>
 
 <!-- HOME -->
 <div id="home" class="panel">
@@ -147,7 +151,7 @@
 </div>
 
 <!-- ADMIN -->
-<div id="adminPage" class="panel hidden">
+<div id="adminPage" class="panel hidden" style="text-align:center;">
   <h2>관리자 페이지</h2>
   <p>비밀번호를 입력하세요.</p>
   <input type="password" id="adminPass" placeholder="password">
