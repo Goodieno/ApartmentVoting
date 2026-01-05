@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-  <title>Apartment Voting</title>
   <meta charset="UTF-8">
+  <title>아파트 투표</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     .apartment { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
@@ -10,51 +10,57 @@
     .category { margin: 10px 0; }
     button { margin-top: 10px; }
     #results { margin-top: 30px; white-space: pre-wrap; }
+    .notice { background: #f0f0f0; padding: 10px; margin-bottom: 20px; border-left: 4px solid #0078d7; }
   </style>
 </head>
 <body>
-  <h1>Vote for Apartments</h1>
-  <p>Please log in first, then rate each apartment on Quality, Spelling, Creativity, and Use of English.</p>
-
-  <!-- Login -->
-  <button onclick="login()">Login with Google</button>
-  <p id="userInfo"></p>
-
-  <!-- Apartment Example -->
-  <div class="apartment" id="apt1">
-    <h2>Apartment 1</h2>
-    <div class="category">Quality:
-      <input type="number" id="apt1-quality" min="1" max="5">
-    </div>
-    <div class="category">Spelling:
-      <input type="number" id="apt1-spelling" min="1" max="5">
-    </div>
-    <div class="category">Creativity:
-      <input type="number" id="apt1-creativity" min="1" max="5">
-    </div>
-    <div class="category">Use of English:
-      <input type="number" id="apt1-english" min="1" max="5">
-    </div>
-    <button onclick="submitVote('apt1')">Submit Vote</button>
+  <h1>아파트 투표</h1>
+  <div class="notice">
+    <p>📢 안내:</p>
+    <ul>
+      <li>투표하려면 먼저 <strong>Google 계정으로 로그인</strong>해야 합니다.</li>
+      <li>로그인 시 <strong>개인 정보는 기록되지 않습니다</strong>. 저장되는 것은 <strong>투표가 제출된 시간</strong>뿐이며, 투표는 익명으로 처리됩니다.</li>
+      <li>각 항목은 <strong>1점(최저) ~ 5점(최고)</strong> 사이에서만 선택할 수 있습니다.</li>
+      <li>각 교사는 아파트당 <strong>한 번만 투표</strong>할 수 있습니다.</li>
+    </ul>
   </div>
 
-  <!-- Add more apartments by copying the block above -->
+  <!-- 로그인 버튼 -->
+  <button onclick="login()">Google 계정으로 로그인</button>
+  <p id="userInfo"></p>
 
-  <!-- Results -->
+  <!-- 아파트 예시 -->
+  <div class="apartment" id="apt1">
+    <h2>아파트 1</h2>
+    <div class="category">품질 (Quality):
+      <input type="number" id="apt1-quality" min="1" max="5">
+    </div>
+    <div class="category">맞춤법 (Spelling):
+      <input type="number" id="apt1-spelling" min="1" max="5">
+    </div>
+    <div class="category">창의성 (Creativity):
+      <input type="number" id="apt1-creativity" min="1" max="5">
+    </div>
+    <div class="category">영어 사용 (Use of English):
+      <input type="number" id="apt1-english" min="1" max="5">
+    </div>
+    <button onclick="submitVote('apt1')">투표 제출</button>
+  </div>
+
+  <!-- 결과 -->
   <div id="results">
-    <h2>Results</h2>
-    <pre id="resultsText">Loading...</pre>
+    <h2>결과</h2>
+    <pre id="resultsText">불러오는 중...</pre>
   </div>
 
   <!-- Firebase SDKs -->
   <script type="module">
-    // Import Firebase SDKs
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
-    // Your Firebase config
+    // Firebase 설정
     const firebaseConfig = {
       apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
       authDomain: "apartmentvoting.firebaseapp.com",
@@ -65,60 +71,65 @@
       measurementId: "G-H1W896MCWF"
     };
 
-    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
     const db = getFirestore(app);
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    // Login
+    // 로그인
     window.login = function() {
       signInWithPopup(auth, provider)
         .then((result) => {
           const user = result.user;
-          document.getElementById("userInfo").textContent = "Logged in as: " + user.email;
+          document.getElementById("userInfo").textContent = "로그인됨: " + user.email;
         })
         .catch((error) => {
-          console.error("Login error:", error);
+          console.error("로그인 오류:", error);
         });
     };
 
-    // Voting period restriction
+    // 투표 기간 제한
     function withinVotingPeriod() {
       const now = new Date();
-      const start = new Date("2026-01-05T15:00:00"); // Monday 3pm
-      const end = new Date("2026-01-07T15:00:00");   // Wednesday 3pm
+      const start = new Date("2026-01-05T15:00:00"); // 월요일 오후 3시
+      const end = new Date("2026-01-07T15:00:00");   // 수요일 오후 3시
       return now >= start && now <= end;
     }
 
-    // Submit vote
+    // 투표 제출
     window.submitVote = async function(apartmentId) {
       const user = auth.currentUser;
       if (!user) {
-        alert("Please log in first.");
+        alert("먼저 로그인하세요.");
         return;
       }
       if (!withinVotingPeriod()) {
-        alert("Voting is closed.");
+        alert("투표 기간이 아닙니다.");
         return;
       }
 
-      // Check if already voted
+      // 이미 투표했는지 확인
       const q = query(collection(db, "votes"),
                       where("apartment", "==", apartmentId),
                       where("userId", "==", user.uid));
       const existing = await getDocs(q);
       if (!existing.empty) {
-        alert("You have already voted for this apartment.");
+        alert("이미 이 아파트에 투표했습니다.");
         return;
       }
 
-      // Collect scores
+      // 점수 가져오기
       const quality = parseInt(document.getElementById(apartmentId + "-quality").value);
       const spelling = parseInt(document.getElementById(apartmentId + "-spelling").value);
       const creativity = parseInt(document.getElementById(apartmentId + "-creativity").value);
       const english = parseInt(document.getElementById(apartmentId + "-english").value);
+
+      // 1~5 범위 확인
+      if ([quality, spelling, creativity, english].some(v => v < 1 || v > 5 || isNaN(v))) {
+        alert("모든 항목은 1~5 사이의 숫자여야 합니다.");
+        return;
+      }
 
       await addDoc(collection(db, "votes"), {
         apartment: apartmentId,
@@ -127,14 +138,13 @@
         creativity,
         english,
         userId: user.uid,
-        userEmail: user.email,
-        timestamp: new Date()
+        timestamp: new Date() // ✅ 저장되는 건 시간만
       });
 
-      alert("Vote submitted!");
+      alert("투표가 제출되었습니다!");
     };
 
-    // Live results
+    // 실시간 결과
     onSnapshot(collection(db, "votes"), (snapshot) => {
       let results = {};
       snapshot.forEach((doc) => {
@@ -151,10 +161,10 @@
       let text = "";
       for (let apt in results) {
         text += `${apt}:\n`;
-        text += `  Quality: ${avg(results[apt].quality)}\n`;
-        text += `  Spelling: ${avg(results[apt].spelling)}\n`;
-        text += `  Creativity: ${avg(results[apt].creativity)}\n`;
-        text += `  Use of English: ${avg(results[apt].english)}\n\n`;
+        text += `  품질: ${avg(results[apt].quality)}\n`;
+        text += `  맞춤법: ${avg(results[apt].spelling)}\n`;
+        text += `  창의성: ${avg(results[apt].creativity)}\n`;
+        text += `  영어 사용: ${avg(results[apt].english)}\n\n`;
       }
       document.getElementById("resultsText").textContent = text;
     });
