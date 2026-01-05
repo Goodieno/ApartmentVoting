@@ -7,9 +7,11 @@
     body { font-family: Arial, sans-serif; margin: 20px; }
     .class-link { margin: 10px 0; }
     .hidden { display: none; }
-    button { margin-top: 10px; }
+    button { margin: 5px; padding: 8px 12px; }
     #home h2 { margin-bottom: 5px; }
     #totalCounter { font-size: 1.5em; font-weight: bold; margin-top: 30px; }
+    .score-buttons button { background: #eee; border: 1px solid #ccc; }
+    .score-buttons button.selected { background: #0078d7; color: white; }
     #adminBtn { margin-top: 20px; background: #d9534f; color: white; padding: 8px 12px; border: none; cursor: pointer; }
   </style>
 </head>
@@ -21,34 +23,41 @@
   <div id="home">
     <h2>반 목록</h2>
     <div id="classLinks"></div>
-
-    <!-- Total counter -->
     <div id="totalCounter">총 투표 수: 0</div>
-
-    <!-- Admin button -->
     <button id="adminBtn" onclick="adminDelete()">관리자: 모든 투표 삭제</button>
   </div>
 
   <!-- Voting Page -->
   <div id="votePage" class="hidden">
     <h2 id="voteTitle"></h2>
-    <p>각 항목은 1점(최저) ~ 5점(최고) 사이에서만 선택할 수 있습니다.</p>
-    <div>품질 (Quality): <input type="number" id="quality" min="1" max="5"></div>
-    <div>맞춤법 (Spelling): <input type="number" id="spelling" min="1" max="5"></div>
-    <div>창의성 (Creativity): <input type="number" id="creativity" min="1" max="5"></div>
-    <div>영어 사용 (Use of English): <input type="number" id="english" min="1" max="5"></div>
+    <p>각 항목은 1점(최저) ~ 5점(최고) 중 하나를 선택하세요.</p>
+
+    <div>품질 (Quality): 
+      <div class="score-buttons" id="quality-buttons"></div>
+    </div>
+    <div>맞춤법 (Spelling): 
+      <div class="score-buttons" id="spelling-buttons"></div>
+    </div>
+    <div>창의성 (Creativity): 
+      <div class="score-buttons" id="creativity-buttons"></div>
+    </div>
+    <div>영어 사용 (Use of English): 
+      <div class="score-buttons" id="english-buttons"></div>
+    </div>
+
     <button onclick="submitVote()">투표 제출</button>
   </div>
 
   <!-- Firebase SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+    import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
     // Firebase 설정
     const firebaseConfig = {
       apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
       authDomain: "apartmentvoting.firebaseapp.com",
+      databaseURL: "https://apartmentvoting-default-rtdb.firebaseio.com", 
       projectId: "apartmentvoting",
       storageBucket: "apartmentvoting.firebasestorage.app",
       messagingSenderId: "985145600430",
@@ -57,10 +66,10 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    const db = getDatabase(app);
 
-    // 현재 선택된 반
     let currentClass = null;
+    let scores = { quality: null, spelling: null, creativity: null, english: null };
 
     // 반 링크 생성 (1반–8반)
     const classLinksDiv = document.getElementById("classLinks");
@@ -73,52 +82,67 @@
       classLinksDiv.appendChild(document.createElement("br"));
     }
 
+    // 점수 버튼 생성
+    function createScoreButtons(categoryId, categoryKey) {
+      const container = document.getElementById(categoryId);
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = i;
+        btn.onclick = () => {
+          scores[categoryKey] = i;
+          [...container.children].forEach(b => b.classList.remove("selected"));
+          btn.classList.add("selected");
+        };
+        container.appendChild(btn);
+      }
+    }
+    createScoreButtons("quality-buttons", "quality");
+    createScoreButtons("spelling-buttons", "spelling");
+    createScoreButtons("creativity-buttons", "creativity");
+    createScoreButtons("english-buttons", "english");
+
     // 투표 페이지 열기
     function openVotePage(className) {
       currentClass = className;
+      scores = { quality: null, spelling: null, creativity: null, english: null };
       document.getElementById("voteTitle").textContent = className + " 투표";
       document.getElementById("home").classList.add("hidden");
       document.getElementById("votePage").classList.remove("hidden");
+      document.querySelectorAll(".score-buttons button").forEach(b => b.classList.remove("selected"));
     }
 
     // 투표 제출
     window.submitVote = async function() {
-      const quality = parseInt(document.getElementById("quality").value);
-      const spelling = parseInt(document.getElementById("spelling").value);
-      const creativity = parseInt(document.getElementById("creativity").value);
-      const english = parseInt(document.getElementById("english").value);
-
-      // 1~5 범위 확인
-      if ([quality, spelling, creativity, english].some(v => v < 1 || v > 5 || isNaN(v))) {
-        alert("모든 항목은 1~5 사이의 숫자여야 합니다.");
+      if (!scores.quality || !scores.spelling || !scores.creativity || !scores.english) {
+        alert("모든 항목에 점수를 선택하세요.");
         return;
       }
 
-      await addDoc(collection(db, "votes"), {
-        className: currentClass,
-        quality,
-        spelling,
-        creativity,
-        english,
-        timestamp: new Date()
-      });
+      try {
+        const votesRef = ref(db, "votes");
+        await push(votesRef, {
+          className: currentClass,
+          quality: scores.quality,
+          spelling: scores.spelling,
+          creativity: scores.creativity,
+          english: scores.english,
+          timestamp: Date.now()
+        });
+        alert("투표가 제출되었습니다!");
+      } catch (e) {
+        console.error("Error submitting vote:", e);
+        alert("투표 제출 중 오류가 발생했습니다.");
+      }
 
-      alert("투표가 제출되었습니다!");
-
-      // 입력 초기화
-      document.getElementById("quality").value = "";
-      document.getElementById("spelling").value = "";
-      document.getElementById("creativity").value = "";
-      document.getElementById("english").value = "";
-
-      // 홈으로 돌아가기
       document.getElementById("votePage").classList.add("hidden");
       document.getElementById("home").classList.remove("hidden");
     };
 
     // 총 투표 수 실시간 업데이트
-    onSnapshot(collection(db, "votes"), (snapshot) => {
-      const total = snapshot.size;
+    const votesRef = ref(db, "votes");
+    onValue(votesRef, (snapshot) => {
+      const data = snapshot.val();
+      const total = data ? Object.keys(data).length : 0;
       document.getElementById("totalCounter").textContent = "총 투표 수: " + total;
     });
 
@@ -126,11 +150,7 @@
     window.adminDelete = async function() {
       const password = prompt("관리자 비밀번호를 입력하세요:");
       if (password === "delete") {
-        const snapshot = await onSnapshot(collection(db, "votes"), async (snap) => {
-          snap.forEach(async (docItem) => {
-            await deleteDoc(doc(db, "votes", docItem.id));
-          });
-        });
+        await remove(votesRef);
         alert("모든 투표 데이터가 삭제되었습니다!");
       } else {
         alert("비밀번호가 올바르지 않습니다.");
