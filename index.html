@@ -1,404 +1,187 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>아파트 투표</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 12px;
-      background: linear-gradient(180deg, #f4f6f8, #eef1f5);
-      text-align: center;
-    }
+<meta charset="UTF-8">
+<title>아파트 투표</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    h1 {
-      font-size: 1.7em;
-      margin-bottom: 10px;
-      letter-spacing: 0.04em;
-    }
-    h2 {
-      font-size: 1.35em;
-      margin-bottom: 8px;
-      letter-spacing: 0.03em;
-    }
+<style>
+body {
+  font-family: Arial, sans-serif;
+  margin: 12px;
+  background: linear-gradient(180deg,#f4f6f8,#eef1f5);
+  text-align: center;
+}
 
-    button {
-      margin: 6px 4px;
-      padding: 12px 16px;
-      font-size: 16px;
-      cursor:pointer;
-      border-radius: 10px;
-      border: none;
-      background: #e0e0e0;
-    }
+.panel {
+  background:#fff;
+  border-radius:18px;
+  padding:20px 16px;
+  max-width:720px;
+  margin:16px auto;
+  box-shadow:0 6px 18px rgba(0,0,0,0.08);
+}
 
-    button:active {
-      transform: scale(0.97);
-    }
+button {
+  padding:12px 16px;
+  border-radius:10px;
+  border:none;
+  font-size:16px;
+  cursor:pointer;
+  background:#e0e0e0;
+}
 
-    .hidden { display:none; }
+.hidden { display:none; }
 
-    .panel {
-      background:#fff;
-      border-radius:18px;
-      padding:20px 16px;
-      max-width:720px;
-      margin:16px auto;
-      box-shadow:0 6px 18px rgba(0,0,0,0.08);
-    }
+#classLinks {
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
+}
 
-    #classLinks {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      margin-top: 14px;
-    }
+.score-buttons {
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:8px;
+  max-width:420px;
+  margin:8px auto;
+}
 
-    #totalCounter {
-      font-size:1.2em;
-      font-weight:bold;
-      text-align:center;
-      margin-top:20px;
-    }
+.score-buttons button.selected {
+  background:#0078d7;
+  color:#fff;
+  font-weight:bold;
+}
 
-    .score-buttons {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 8px;
-      margin: 8px auto 18px auto;
-      max-width: 420px;
-    }
-
-    .score-buttons button {
-      background:#eee;
-      border:1px solid #ccc;
-      font-size:18px;
-      padding:12px 0;
-    }
-
-    .score-buttons button.selected {
-      background:#0078d7;
-      color:white;
-      font-weight:bold;
-    }
-
-    input[type="password"] {
-      width: 90%;
-      max-width: 360px;
-      padding: 12px;
-      font-size: 16px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      margin: 12px auto 6px auto;
-      display: block;
-      box-sizing: border-box;
-    }
-
-    table {
-      width:100%;
-      border-collapse:collapse;
-      margin:16px auto 0 auto;
-      font-size: 0.9em;
-    }
-
-    th, td {
-      border:1px solid #ccc;
-      padding:6px;
-      text-align:center;
-    }
-
-    th {
-      background:#eee;
-    }
-
-    @media (min-width: 600px) {
-      #classLinks {
-        grid-template-columns: repeat(4, 1fr);
-      }
-    }
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-  }
-
-  </style>
+@keyframes pulse {
+  0% { transform:scale(1); }
+  50% { transform:scale(1.05); }
+  100% { transform:scale(1); }
+}
+</style>
 </head>
+
 <body>
 
 <h1>5학년 아파트 투표</h1>
-<p style="color:#c62828; font-weight:bold; margin-top:6px;">* 교사당 1회만 투표해 주세요 *</p>
+<p style="color:#c62828;font-weight:bold;">* 교사당 1회만 투표해 주세요 *</p>
 
-<!-- HOME -->
 <div id="home" class="panel">
   <h2>반 목록</h2>
   <div id="classLinks"></div>
-  <div id="countdown" style="font-weight:bold; margin-top:10px; font-size:1.1em;"></div>
+  <div id="countdown" style="margin-top:12px;font-weight:bold;"></div>
   <div id="totalCounter">총 투표 수: 0</div>
-  <div style="text-align:center; margin-top:20px;">
-    <button onclick="openAdmin()">관리자</button>
-  </div>
+  <button onclick="openAdmin()">관리자</button>
 </div>
 
-<!-- VOTING -->
 <div id="votePage" class="panel hidden">
   <h2 id="voteTitle"></h2>
-  <p style="text-align:center;">각 항목을 1점(최저) ~ 5점(최고)로 평가하세요.</p>
-
-  <div>품질: <div class="score-buttons" id="quality-buttons"></div></div>
-  <div>맞춤법: <div class="score-buttons" id="spelling-buttons"></div></div>
-  <div>창의성: <div class="score-buttons" id="creativity-buttons"></div></div>
-  <div>영어 사용: <div class="score-buttons" id="english-buttons"></div></div>
-
-  <div style="text-align:center; margin-top:20px;">
-    <button onclick="submitVote()">투표 제출</button>
-    <button onclick="goHome()">취소</button>
-  </div>
+  <div>품질 <div id="quality" class="score-buttons"></div></div>
+  <div>맞춤법 <div id="spelling" class="score-buttons"></div></div>
+  <div>창의성 <div id="creativity" class="score-buttons"></div></div>
+  <div>영어 <div id="english" class="score-buttons"></div></div>
+  <button onclick="submitVote()">제출</button>
+  <button onclick="goHome()">취소</button>
 </div>
 
-<!-- ADMIN -->
-<div id="adminPage" class="panel hidden" style="text-align:center;">
-  <h2>관리자 페이지</h2>
-  <p>비밀번호를 입력하세요.</p>
-  <input type="password" id="adminPass" placeholder="password">
-  <div style="margin-top:10px;">
-    <button onclick="viewResults()">결과 보기</button>
-    <button onclick="deleteAll()">전체 삭제</button>
-    <button onclick="goHome()">돌아가기</button>
-  </div>
-
+<div id="adminPage" class="panel hidden">
+  <input id="adminPass" type="password" placeholder="password">
+  <button onclick="viewResults()">결과</button>
+  <button onclick="deleteAll()">전체 삭제</button>
+  <button onclick="goHome()">뒤로</button>
   <div id="results" class="hidden">
-    <h3>🏆 최종 결과</h3>
+    <h3>🏆 결과</h3>
     <div id="podium"></div>
-
-    <h3 style="margin-top:20px;">전체 투표 내역</h3>
-    <h3>투표 결과</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>반</th>
-          <th>품질</th>
-          <th>맞춤법</th>
-          <th>창의성</th>
-          <th>영어</th><th>시간</th>
-        </tr>
-      </thead>
-      <tbody id="resultsBody"></tbody>
-    </table>
   </div>
 </div>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-  import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
-    authDomain: "apartmentvoting.firebaseapp.com",
-    databaseURL: "https://apartmentvoting-default-rtdb.firebaseio.com",
-    projectId: "apartmentvoting",
-    storageBucket: "apartmentvoting.firebasestorage.app",
-    messagingSenderId: "985145600430",
-    appId: "1:985145600430:web:c4877654d87ccd4b74803f"
-  };
+const app = initializeApp({
+  apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
+  databaseURL: "https://apartmentvoting-default-rtdb.firebaseio.com"
+});
 
-  // ===== VOTING DEADLINE =====
-  // 2026-01-07 15:30 (KST)
-  const VOTING_END = new Date(2026, 0, 7, 15, 30, 0);
+const db = getDatabase(app);
+const VOTING_END = new Date(2026,0,7,15,30);
 
-  function updateCountdown() {
-    const now = new Date();
-    const diff = VOTING_END - now;
-    const el = document.getElementById("countdown");
+function updateCountdown(){
+  const diff = VOTING_END - new Date();
+  const el = document.getElementById("countdown");
 
-    if (diff <= 0) {
-      el.textContent = "⛔ 투표 종료";
-      el.style.color = "#c62828";
-      return;
-    }
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-    el.textContent = `⏰ 투표 종료까지 ${hours}시간 ${minutes}분 ${seconds}초`;
-
-    // PANIC MODE: last 10 minutes
-    if (diff <= 10 * 60 * 1000) {
-      el.style.color = "#d32f2f";
-      el.style.fontSize = "1.3em";
-      el.style.animation = "pulse 1s infinite";
-    }
+  if(diff<=0){
+    el.textContent="⛔ 투표 종료";
+    el.style.color="red";
+    return;
   }
 
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    el.textContent = `⏳ 투표 종료까지 ${hours}시간 ${minutes}분`;
+  const h=Math.floor(diff/3600000);
+  const m=Math.floor(diff%3600000/60000);
+  const s=Math.floor(diff%60000/1000);
+
+  el.textContent=`⏰ ${h}시간 ${m}분 ${s}초`;
+  if(diff<600000) el.style.animation="pulse 1s infinite";
+}
+
+setInterval(updateCountdown,1000);
+updateCountdown();
+
+const classLinks=document.getElementById("classLinks");
+for(let i=1;i<=8;i++){
+  const b=document.createElement("button");
+  b.textContent=`${i}반`;
+  b.onclick=()=>openVotePage(`${i}반`);
+  classLinks.appendChild(b);
+}
+
+let currentClass=null;
+let scores={};
+
+function makeButtons(id,key){
+  const c=document.getElementById(id);
+  for(let i=1;i<=5;i++){
+    const b=document.createElement("button");
+    b.textContent=i;
+    b.onclick=()=>{
+      scores[key]=i;
+      [...c.children].forEach(x=>x.classList.remove("selected"));
+      b.classList.add("selected");
+    };
+    c.appendChild(b);
   }
+}
 
-  setInterval(updateCountdown, 1000);
-  updateCountdown();
+["quality","spelling","creativity","english"].forEach(x=>makeButtons(x,x));
 
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
+window.openVotePage=(cls)=>{
+  currentClass=cls;
+  scores={};
+  show("votePage");
+  document.getElementById("voteTitle").textContent=cls;
+};
 
-  let currentClass = null;
-  let scores = { quality:null, spelling:null, creativity:null, english:null };
+window.submitVote=async()=>{
+  if(new Date()>VOTING_END) return alert("종료됨");
+  if(Object.keys(scores).length<4) return alert("모두 선택");
+  await push(ref(db,"votes"),{className:currentClass,...scores,time:Date.now()});
+  goHome();
+};
 
-  const classLinksDiv = document.getElementById("classLinks");
-  for (let i=1;i<=8;i++){
-    const btn=document.createElement("button");
-    btn.textContent=`${i}반`;
-    btn.onclick=()=>openVotePage(`${i}반`);
-    classLinksDiv.appendChild(btn);
-  }
+window.openAdmin=()=>show("adminPage");
+window.goHome=()=>show("home");
 
-  function createScoreButtons(id,key){
-    const c=document.getElementById(id);
-    for(let i=1;i<=5;i++){
-      const b=document.createElement("button");
-      b.textContent=i;
-      b.onclick=()=>{
-        scores[key]=i;
-        [...c.children].forEach(x=>x.classList.remove("selected"));
-        b.classList.add("selected");
-      };
-      c.appendChild(b);
-    }
-  }
+function show(id){
+  ["home","votePage","adminPage"].forEach(x=>document.getElementById(x).classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+}
 
-  createScoreButtons("quality-buttons","quality");
-  createScoreButtons("spelling-buttons","spelling");
-  createScoreButtons("creativity-buttons","creativity");
-  createScoreButtons("english-buttons","english");
-
-  window.openVotePage=function(cls){
-    currentClass=cls;
-    scores={ quality:null, spelling:null, creativity:null, english:null };
-    document.querySelectorAll('.score-buttons button').forEach(b=>b.classList.remove('selected'));
-    document.getElementById("voteTitle").textContent=cls+" 투표";
-    show("votePage");
-  }
-
-  window.submitVote=async function(){
-    const now = new Date();
-    if (now > VOTING_END) {
-      alert("투표가 종료되었습니다.");
-      goHome();
-      return;
-    }
-
-    if(Object.values(scores).includes(null)){
-      alert("모든 항목을 선택하세요"); return;
-    }
-    await push(ref(db,"votes"),{ className:currentClass, ...scores, time:Date.now() });
-    alert("투표 완료");
-    goHome();
-  }(){
-    if(Object.values(scores).includes(null)){
-      alert("모든 항목을 선택하세요"); return;
-    }
-    await push(ref(db,"votes"),{ className:currentClass, ...scores, time:Date.now() });
-    alert("투표 완료");
-    goHome();
-  }
-
-  window.openAdmin=function(){ show("adminPage"); }
-
-  window.viewResults=function(){
-    if(document.getElementById("adminPass").value!=="delete"){
-      alert("비밀번호 오류"); return;
-    }
-
-    const body=document.getElementById("resultsBody");
-    const podium=document.getElementById("podium");
-    body.innerHTML="";
-    podium.innerHTML="";
-
-    onValue(ref(db,"votes"),(snap)=>{
-      const d=snap.val()||{};
-      const totals={};
-
-      Object.values(d).forEach(v=>{
-        const sum=v.quality+v.spelling+v.creativity+v.english;
-        totals[v.className]=(totals[v.className]||0)+sum;
-
-        const date = new Date(v.time);
-        const formatted = date.toLocaleString('ko-KR', {
-          month:'numeric', day:'numeric', weekday:'short',
-          hour:'2-digit', minute:'2-digit', hour12:false
-        });
-
-        const tr=document.createElement("tr");
-        tr.innerHTML=`<td>${v.className}</td><td>${v.quality}</td><td>${v.spelling}</td><td>${v.creativity}</td><td>${v.english}</td><td>${formatted}</td>`;
-        body.appendChild(tr);
-      });
-
-      const ranked = Object.entries(totals)
-        .sort((a,b)=>b[1]-a[1])
-        .slice(0,3);
-
-      const medals = ['🥇','🥈','🥉'];
-      ranked.forEach((r,i)=>{
-        const div=document.createElement('div');
-        div.style.fontSize='1.2em';
-        div.style.margin='6px 0';
-        div.innerHTML=`${medals[i]} ${i+1}위: <b>${r[0]}</b> — ${r[1]}점`;
-        podium.appendChild(div);
-      });
-
-    },{onlyOnce:true});
-
-    document.getElementById("results").classList.remove("hidden");
-  }(){
-    if(document.getElementById("adminPass").value!=="delete"){
-      alert("비밀번호 오류"); return;
-    }
-    const body=document.getElementById("resultsBody");
-    body.innerHTML="";
-    onValue(ref(db,"votes"),(snap)=>{
-      const d=snap.val()||{};
-      Object.values(d).forEach(v=>{
-        const tr=document.createElement("tr");
-        const date = new Date(v.time);
-        const formatted = date.toLocaleString('ko-KR', {
-          month: 'numeric',
-          day: 'numeric',
-          weekday: 'short',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        });
-        tr.innerHTML = `<td>${v.className}</td><td>${v.quality}</td><td>${v.spelling}</td><td>${v.creativity}</td><td>${v.english}</td><td>${formatted}</td>`;
-        body.appendChild(tr);
-      });
-    },{onlyOnce:true});
-    document.getElementById("results").classList.remove("hidden");
-  }
-
-  window.deleteAll=async function(){
-    if(document.getElementById("adminPass").value!=="delete"){
-      alert("비밀번호 오류"); return;
-    }
-    if(confirm("정말 모든 투표를 삭제합니까?")){
-      await remove(ref(db,"votes"));
-      alert("삭제 완료");
-      document.getElementById("resultsBody").innerHTML="";
-    }
-  }
-
-  window.goHome=function(){ show("home"); }
-
-  function show(id){
-    ["home","votePage","adminPage"].forEach(x=>document.getElementById(x).classList.add("hidden"));
-    document.getElementById(id).classList.remove("hidden");
-  }
-
-  onValue(ref(db,"votes"),(snap)=>{
-    const d=snap.val();
-    document.getElementById("totalCounter").textContent="총 투표 수: "+(d?Object.keys(d).length:0);
-  });
+onValue(ref(db,"votes"),snap=>{
+  const d=snap.val();
+  document.getElementById("totalCounter").textContent="총 투표 수: "+(d?Object.keys(d).length:0);
+});
 </script>
+
 </body>
 </html>
