@@ -44,7 +44,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
     import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-    // Firebase 설정
     const firebaseConfig = {
       apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
       authDomain: "apartmentvoting.firebaseapp.com",
@@ -62,7 +61,6 @@
     let currentClass = null;
     let scores = { quality: null, spelling: null, creativity: null, english: null };
 
-    // 반 링크 생성 (1반–8반)
     const classLinksDiv = document.getElementById("classLinks");
     for (let i = 1; i <= 8; i++) {
       const link = document.createElement("button");
@@ -73,7 +71,6 @@
       classLinksDiv.appendChild(document.createElement("br"));
     }
 
-    // 점수 버튼 생성
     function createScoreButtons(categoryId, categoryKey) {
       const container = document.getElementById(categoryId);
       for (let i = 1; i <= 5; i++) {
@@ -92,7 +89,6 @@
     createScoreButtons("creativity-buttons", "creativity");
     createScoreButtons("english-buttons", "english");
 
-    // 투표 페이지 열기
     function openVotePage(className) {
       currentClass = className;
       scores = { quality: null, spelling: null, creativity: null, english: null };
@@ -102,7 +98,6 @@
       document.querySelectorAll(".score-buttons button").forEach(b => b.classList.remove("selected"));
     }
 
-    // 투표 제출
     window.submitVote = async function() {
       if (!scores.quality || !scores.spelling || !scores.creativity || !scores.english) {
         alert("모든 항목에 점수를 선택하세요.");
@@ -129,7 +124,6 @@
       document.getElementById("home").classList.remove("hidden");
     };
 
-    // 총 투표 수 실시간 업데이트
     const votesRef = ref(db, "votes");
     onValue(votesRef, (snapshot) => {
       const data = snapshot.val();
