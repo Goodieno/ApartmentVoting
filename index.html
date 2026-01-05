@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Apartment Voting</title>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .apartment { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
+    h2 { margin-top: 0; }
+    .category { margin: 10px 0; }
+    button { margin-top: 10px; }
+    #results { margin-top: 30px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Vote for Apartments</h1>
+  <p>Please log in first, then rate each apartment on Quality, Spelling, Creativity, and Use of English.</p>
+
+  <!-- Login -->
+  <button onclick="login()">Login with Google</button>
+  <p id="userInfo"></p>
+
+  <!-- Apartment Example -->
+  <div class="apartment" id="apt1">
+    <h2>Apartment 1</h2>
+    <div class="category">Quality:
+      <input type="number" id="apt1-quality" min="1" max="5">
+    </div>
+    <div class="category">Spelling:
+      <input type="number" id="apt1-spelling" min="1" max="5">
+    </div>
+    <div class="category">Creativity:
+      <input type="number" id="apt1-creativity" min="1" max="5">
+    </div>
+    <div class="category">Use of English:
+      <input type="number" id="apt1-english" min="1" max="5">
+    </div>
+    <button onclick="submitVote('apt1')">Submit Vote</button>
+  </div>
+
+  <!-- Add more apartments by copying the block above -->
+
+  <!-- Results -->
+  <div id="results">
+    <h2>Results</h2>
+    <pre id="resultsText">Loading...</pre>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+
+    // Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
+      authDomain: "apartmentvoting.firebaseapp.com",
+      projectId: "apartmentvoting",
+      storageBucket: "apartmentvoting.firebasestorage.app",
+      messagingSenderId: "985145600430",
+      appId: "1:985145600430:web:c4877654d87ccd4b74803f",
+      measurementId: "G-H1W896MCWF"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    // Login
+    window.login = function() {
+      signInWithPopup(auth, provider)
+        .then((result) => {
+          const user = result.user;
+          document.getElementById("userInfo").textContent = "Logged in as: " + user.email;
+        })
+        .catch((error) => {
+          console.error("Login error:", error);
+        });
+    };
+
+    // Voting period restriction
+    function withinVotingPeriod() {
+      const now = new Date();
+      const start = new Date("2026-01-05T15:00:00"); // Monday 3pm
+      const end = new Date("2026-01-07T15:00:00");   // Wednesday 3pm
+      return now >= start && now <= end;
+    }
+
+    // Submit vote
+    window.submitVote = async function(apartmentId) {
+      const user = auth.currentUser;
+      if (!user) {
+        alert("Please log in first.");
+        return;
+      }
+      if (!withinVotingPeriod()) {
+        alert("Voting is closed.");
+        return;
+      }
+
+      // Check if already voted
+      const q = query(collection(db, "votes"),
+                      where("apartment", "==", apartmentId),
+                      where("userId", "==", user.uid));
+      const existing = await getDocs(q);
+      if (!existing.empty) {
+        alert("You have already voted for this apartment.");
+        return;
+      }
+
+      // Collect scores
+      const quality = parseInt(document.getElementById(apartmentId + "-quality").value);
+      const spelling = parseInt(document.getElementById(apartmentId + "-spelling").value);
+      const creativity = parseInt(document.getElementById(apartmentId + "-creativity").value);
+      const english = parseInt(document.getElementById(apartmentId + "-english").value);
+
+      await addDoc(collection(db, "votes"), {
+        apartment: apartmentId,
+        quality,
+        spelling,
+        creativity,
+        english,
+        userId: user.uid,
+        userEmail: user.email,
+        timestamp: new Date()
+      });
+
+      alert("Vote submitted!");
+    };
+
+    // Live results
+    onSnapshot(collection(db, "votes"), (snapshot) => {
+      let results = {};
+      snapshot.forEach((doc) => {
+        let v = doc.data();
+        if (!results[v.apartment]) {
+          results[v.apartment] = { quality: [], spelling: [], creativity: [], english: [] };
+        }
+        results[v.apartment].quality.push(v.quality);
+        results[v.apartment].spelling.push(v.spelling);
+        results[v.apartment].creativity.push(v.creativity);
+        results[v.apartment].english.push(v.english);
+      });
+
+      let text = "";
+      for (let apt in results) {
+        text += `${apt}:\n`;
+        text += `  Quality: ${avg(results[apt].quality)}\n`;
+        text += `  Spelling: ${avg(results[apt].spelling)}\n`;
+        text += `  Creativity: ${avg(results[apt].creativity)}\n`;
+        text += `  Use of English: ${avg(results[apt].english)}\n\n`;
+      }
+      document.getElementById("resultsText").textContent = text;
+    });
+
+    function avg(arr) {
+      return (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2);
+    }
+  </script>
+</body>
+</html>
