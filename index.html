@@ -57,14 +57,6 @@ button {
   font-weight: bold;
 }
 
-input[type=password] {
-  width: 90%;
-  max-width: 360px;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-}
-
 table {
   width: 100%;
   border-collapse: collapse;
@@ -103,51 +95,28 @@ th, td {
   <h2>반 목록</h2>
   <div id="classLinks"></div>
   <div id="totalCounter" style="margin-top:14px; font-weight:bold;">총 투표 수: 0</div>
-  <button style="margin-top:14px;" onclick="openAdmin()">관리자</button>
 </div>
 
-<!-- VOTING -->
-<div id="votePage" class="panel hidden">
-  <h2 id="voteTitle"></h2>
-  <p>각 항목을 1점 ~ 5점으로 평가하세요.</p>
+<!-- RESULTS (PUBLIC) -->
+<div id="resultsPage" class="panel hidden">
+  <h2>🏆 최종 결과</h2>
+  <div id="podium"></div>
 
-  <div>품질<div class="score-buttons" id="quality"></div></div>
-  <div>맞춤법<div class="score-buttons" id="spelling"></div></div>
-  <div>창의성<div class="score-buttons" id="creativity"></div></div>
-  <div>영어 사용<div class="score-buttons" id="english"></div></div>
-
-  <button onclick="submitVote()">투표 제출</button>
-  <button onclick="goHome()">취소</button>
-</div>
-
-<!-- ADMIN -->
-<div id="adminPage" class="panel hidden">
-  <h2>관리자</h2>
-  <input type="password" id="adminPass" placeholder="password">
-  <br><br>
-  <button onclick="viewResults()">결과 보기</button>
-  <button onclick="deleteAll()">전체 삭제</button>
-  <button onclick="goHome()">돌아가기</button>
-
-  <div id="results" class="hidden">
-    <h3>🏆 결과</h3>
-    <div id="podium"></div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>반</th><th>품질</th><th>맞춤법</th>
-          <th>창의성</th><th>영어</th><th>시간</th>
-        </tr>
-      </thead>
-      <tbody id="resultsBody"></tbody>
-    </table>
-  </div>
+  <h3 style="margin-top:20px;">전체 투표 내역</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>반</th><th>품질</th><th>맞춤법</th>
+        <th>창의성</th><th>영어</th><th>시간</th>
+      </tr>
+    </thead>
+    <tbody id="resultsBody"></tbody>
+  </table>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
 const app = initializeApp({
   apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
@@ -157,16 +126,17 @@ const app = initializeApp({
 const db = getDatabase(app);
 const VOTING_END = new Date(2026,0,7,15,30);
 
-let currentClass = null;
-let scores = {};
+let hasSwitched = false;
 
 function updateCountdown() {
-  const diff = VOTING_END - new Date();
+  const now = new Date();
+  const diff = VOTING_END - now;
   const el = document.getElementById("countdown");
 
   if (diff <= 0) {
     el.textContent = "⛔ 투표 종료";
     el.style.color = "#c62828";
+    autoShowResults();
     return;
   }
 
@@ -185,88 +155,64 @@ function updateCountdown() {
 setInterval(updateCountdown, 1000);
 updateCountdown();
 
-const classLinks = document.getElementById("classLinks");
-for (let i=1;i<=8;i++) {
-  const b = document.createElement("button");
-  b.textContent = `${i}반`;
-  b.onclick = () => openVotePage(`${i}반`);
-  classLinks.appendChild(b);
+function autoShowResults() {
+  if (hasSwitched) return;
+  hasSwitched = true;
+
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("resultsPage").classList.remove("hidden");
+
+  loadResults();
 }
 
-["quality","spelling","creativity","english"].forEach(k=>{
-  const c=document.getElementById(k);
-  for(let i=1;i<=5;i++){
-    const b=document.createElement("button");
-    b.textContent=i;
-    b.onclick=()=>{
-      scores[k]=i;
-      [...c.children].forEach(x=>x.classList.remove("selected"));
-      b.classList.add("selected");
-    };
-    c.appendChild(b);
-  }
-});
-
-window.openVotePage = cls => {
-  if (localStorage.getItem("apartmentVoted")) {
-    alert("이 기기에서는 이미 투표했습니다.");
-    return;
-  }
-  currentClass = cls;
-  scores = {};
-  document.getElementById("voteTitle").textContent = cls;
-  show("votePage");
-};
-
-window.submitVote = async () => {
-  if (new Date() > VOTING_END) return alert("투표 종료");
-  if (Object.keys(scores).length < 4) return alert("모두 선택하세요");
-
-  await push(ref(db,"votes"), { className: currentClass, ...scores, time: Date.now() });
-  localStorage.setItem("apartmentVoted","true");
-  alert("투표 완료");
-  goHome();
-};
-
-window.openAdmin = () => show("adminPage");
-window.goHome = () => show("home");
-
-window.viewResults = () => {
-  if (adminPass.value !== "delete") return alert("비밀번호 오류");
-  results.classList.remove("hidden");
-  resultsBody.innerHTML = "";
+function loadResults() {
+  const body = document.getElementById("resultsBody");
+  const podium = document.getElementById("podium");
+  body.innerHTML = "";
   podium.innerHTML = "";
 
   onValue(ref(db,"votes"), snap => {
     const data = snap.val() || {};
     const totals = {};
 
-    Object.values(data).forEach(v=>{
-      totals[v.className]=(totals[v.className]||0)+(v.quality+v.spelling+v.creativity+v.english);
-      const d=new Date(v.time);
-      const t=d.toLocaleString('ko-KR',{month:'numeric',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false});
-      resultsBody.innerHTML+=`<tr><td>${v.className}</td><td>${v.quality}</td><td>${v.spelling}</td><td>${v.creativity}</td><td>${v.english}</td><td>${t}</td></tr>`;
+    Object.values(data).forEach(v => {
+      const sum = v.quality + v.spelling + v.creativity + v.english;
+      totals[v.className] = (totals[v.className] || 0) + sum;
+
+      const d = new Date(v.time);
+      const t = d.toLocaleString('ko-KR', {
+        month:'numeric', day:'numeric', weekday:'short',
+        hour:'2-digit', minute:'2-digit', hour12:false
+      });
+
+      body.innerHTML += `
+        <tr>
+          <td>${v.className}</td>
+          <td>${v.quality}</td>
+          <td>${v.spelling}</td>
+          <td>${v.creativity}</td>
+          <td>${v.english}</td>
+          <td>${t}</td>
+        </tr>`;
     });
 
-    Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,3).forEach((r,i)=>{
-      podium.innerHTML+=`<div>${['🥇','🥈','🥉'][i]} ${r[0]} — ${r[1]}점</div>`;
-    });
-  },{onlyOnce:true});
-};
+    Object.entries(totals)
+      .sort((a,b)=>b[1]-a[1])
+      .slice(0,3)
+      .forEach((r,i)=>{
+        podium.innerHTML += `<div style="margin:6px 0;">
+          ${['🥇','🥈','🥉'][i]} <b>${r[0]}</b> — ${r[1]}점
+        </div>`;
+      });
 
-window.deleteAll = async () => {
-  if (adminPass.value !== "delete") return alert("비밀번호 오류");
-  if (confirm("모두 삭제합니까?")) await remove(ref(db,"votes"));
-};
-
-function show(id){
-  ["home","votePage","adminPage"].forEach(x=>document.getElementById(x).classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
+  }, { onlyOnce:true });
 }
 
-onValue(ref(db,"votes"), snap=>{
-  totalCounter.textContent = "총 투표 수: " + (snap.val()?Object.keys(snap.val()).length:0);
+onValue(ref(db,"votes"), snap => {
+  document.getElementById("totalCounter").textContent =
+    "총 투표 수: " + (snap.val() ? Object.keys(snap.val()).length : 0);
 });
 </script>
+
 </body>
 </html>
