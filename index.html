@@ -117,6 +117,12 @@
         grid-template-columns: repeat(4, 1fr);
       }
     }
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
   </style>
 </head>
 <body>
@@ -128,6 +134,7 @@
 <div id="home" class="panel">
   <h2>반 목록</h2>
   <div id="classLinks"></div>
+  <div id="countdown" style="font-weight:bold; margin-top:10px; font-size:1.1em;"></div>
   <div id="totalCounter">총 투표 수: 0</div>
   <div style="text-align:center; margin-top:20px;">
     <button onclick="openAdmin()">관리자</button>
@@ -162,6 +169,10 @@
   </div>
 
   <div id="results" class="hidden">
+    <h3>🏆 최종 결과</h3>
+    <div id="podium"></div>
+
+    <h3 style="margin-top:20px;">전체 투표 내역</h3>
     <h3>투표 결과</h3>
     <table>
       <thead>
@@ -191,6 +202,43 @@
     messagingSenderId: "985145600430",
     appId: "1:985145600430:web:c4877654d87ccd4b74803f"
   };
+
+  // ===== VOTING DEADLINE =====
+  // 2026-01-07 15:30 (KST)
+  const VOTING_END = new Date(2026, 0, 7, 15, 30, 0);
+
+  function updateCountdown() {
+    const now = new Date();
+    const diff = VOTING_END - now;
+    const el = document.getElementById("countdown");
+
+    if (diff <= 0) {
+      el.textContent = "⛔ 투표 종료";
+      el.style.color = "#c62828";
+      return;
+    }
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    el.textContent = `⏰ 투표 종료까지 ${hours}시간 ${minutes}분 ${seconds}초`;
+
+    // PANIC MODE: last 10 minutes
+    if (diff <= 10 * 60 * 1000) {
+      el.style.color = "#d32f2f";
+      el.style.fontSize = "1.3em";
+      el.style.animation = "pulse 1s infinite";
+    }
+  }
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    el.textContent = `⏳ 투표 종료까지 ${hours}시간 ${minutes}분`;
+  }
+
+  setInterval(updateCountdown, 1000);
+  updateCountdown();
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
@@ -234,6 +282,20 @@
   }
 
   window.submitVote=async function(){
+    const now = new Date();
+    if (now > VOTING_END) {
+      alert("투표가 종료되었습니다.");
+      goHome();
+      return;
+    }
+
+    if(Object.values(scores).includes(null)){
+      alert("모든 항목을 선택하세요"); return;
+    }
+    await push(ref(db,"votes"),{ className:currentClass, ...scores, time:Date.now() });
+    alert("투표 완료");
+    goHome();
+  }(){
     if(Object.values(scores).includes(null)){
       alert("모든 항목을 선택하세요"); return;
     }
@@ -245,6 +307,51 @@
   window.openAdmin=function(){ show("adminPage"); }
 
   window.viewResults=function(){
+    if(document.getElementById("adminPass").value!=="delete"){
+      alert("비밀번호 오류"); return;
+    }
+
+    const body=document.getElementById("resultsBody");
+    const podium=document.getElementById("podium");
+    body.innerHTML="";
+    podium.innerHTML="";
+
+    onValue(ref(db,"votes"),(snap)=>{
+      const d=snap.val()||{};
+      const totals={};
+
+      Object.values(d).forEach(v=>{
+        const sum=v.quality+v.spelling+v.creativity+v.english;
+        totals[v.className]=(totals[v.className]||0)+sum;
+
+        const date = new Date(v.time);
+        const formatted = date.toLocaleString('ko-KR', {
+          month:'numeric', day:'numeric', weekday:'short',
+          hour:'2-digit', minute:'2-digit', hour12:false
+        });
+
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td>${v.className}</td><td>${v.quality}</td><td>${v.spelling}</td><td>${v.creativity}</td><td>${v.english}</td><td>${formatted}</td>`;
+        body.appendChild(tr);
+      });
+
+      const ranked = Object.entries(totals)
+        .sort((a,b)=>b[1]-a[1])
+        .slice(0,3);
+
+      const medals = ['🥇','🥈','🥉'];
+      ranked.forEach((r,i)=>{
+        const div=document.createElement('div');
+        div.style.fontSize='1.2em';
+        div.style.margin='6px 0';
+        div.innerHTML=`${medals[i]} ${i+1}위: <b>${r[0]}</b> — ${r[1]}점`;
+        podium.appendChild(div);
+      });
+
+    },{onlyOnce:true});
+
+    document.getElementById("results").classList.remove("hidden");
+  }(){
     if(document.getElementById("adminPass").value!=="delete"){
       alert("비밀번호 오류"); return;
     }
