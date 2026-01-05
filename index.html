@@ -2,217 +2,275 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>아파트 투표</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5학년 아파트 투표</title>
 
 <style>
 body {
   font-family: Arial, sans-serif;
-  margin: 12px;
-  background: linear-gradient(180deg, #f4f6f8, #eef1f5);
+  background: #f4f6f8;
+  margin: 0;
+  padding: 0;
   text-align: center;
 }
 
-h1 { font-size: 1.7em; margin-bottom: 6px; }
-h2 { font-size: 1.3em; }
+.container {
+  max-width: 480px;
+  margin: 20px auto;
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+}
 
-.panel {
-  background: #fff;
-  border-radius: 18px;
-  padding: 20px 16px;
-  max-width: 720px;
-  margin: 14px auto;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+h1 {
+  margin-bottom: 5px;
+}
+
+.notice {
+  color: red;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+#countdown {
+  font-size: 1.4em;
+  font-weight: bold;
+  color: #b00000;
+  margin-bottom: 15px;
 }
 
 button {
-  padding: 12px 16px;
-  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 6px;
+  font-size: 1em;
+  border-radius: 8px;
   border: none;
-  background: #e0e0e0;
-  font-size: 16px;
-  cursor: pointer;
+  background: #0078d7;
+  color: white;
 }
 
-.hidden { display: none; }
-
-#classLinks {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-top: 14px;
+button:disabled {
+  background: #aaa;
 }
 
 .score-buttons {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-  max-width: 420px;
-  margin: 8px auto 18px auto;
+  margin: 10px 0;
+}
+
+.score-buttons button {
+  background: #eee;
+  color: black;
+  border: 1px solid #ccc;
 }
 
 .score-buttons button.selected {
   background: #0078d7;
   color: white;
-  font-weight: bold;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 14px;
+.hidden {
+  display: none;
+}
+
+.vote-item {
+  margin-bottom: 14px;
+}
+
+#resultsList {
+  text-align: left;
   font-size: 0.9em;
-}
-
-th, td {
-  border: 1px solid #ccc;
-  padding: 6px;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
-
-@media (min-width:600px) {
-  #classLinks { grid-template-columns: repeat(4, 1fr); }
 }
 </style>
 </head>
 
 <body>
 
-<h1>5학년 아파트 투표</h1>
-<p style="color:#c62828; font-weight:bold;">
-* 교사당 1회만 투표해 주세요 *
-</p>
+<div class="container">
 
-<div id="countdown" style="font-weight:bold; font-size:1.15em; margin:10px 0;"></div>
+  <h1>5학년 아파트 투표</h1>
+  <div class="notice">*교사 1인당 1회만 투표 가능합니다*</div>
+  <div id="countdown">투표 종료까지 계산 중...</div>
 
-<!-- HOME -->
-<div id="home" class="panel">
-  <h2>반 목록</h2>
-  <div id="classLinks"></div>
-  <div id="totalCounter" style="margin-top:14px; font-weight:bold;">총 투표 수: 0</div>
+  <!-- HOME -->
+  <div id="home">
+    <p>반을 선택하세요</p>
+    <div id="classLinks"></div>
+    <div id="totalCounter">총 투표 수: 0</div>
+  </div>
+
+  <!-- VOTING -->
+  <div id="votePage" class="hidden">
+    <h2 id="voteTitle"></h2>
+
+    <div class="vote-item">품질
+      <div class="score-buttons" id="quality"></div>
+    </div>
+
+    <div class="vote-item">맞춤법
+      <div class="score-buttons" id="spelling"></div>
+    </div>
+
+    <div class="vote-item">창의성
+      <div class="score-buttons" id="creativity"></div>
+    </div>
+
+    <div class="vote-item">영어 사용
+      <div class="score-buttons" id="english"></div>
+    </div>
+
+    <button id="submitBtn">투표 제출</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="resultsPage" class="hidden">
+    <h2>투표 결과</h2>
+    <div id="resultsList"></div>
+  </div>
+
 </div>
 
-<!-- RESULTS (PUBLIC) -->
-<div id="resultsPage" class="panel hidden">
-  <h2>🏆 최종 결과</h2>
-  <div id="podium"></div>
-
-  <h3 style="margin-top:20px;">전체 투표 내역</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>반</th><th>품질</th><th>맞춤법</th>
-        <th>창의성</th><th>영어</th><th>시간</th>
-      </tr>
-    </thead>
-    <tbody id="resultsBody"></tbody>
-  </table>
-</div>
-
+<!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-const app = initializeApp({
+const firebaseConfig = {
   apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
-  databaseURL: "https://apartmentvoting-default-rtdb.firebaseio.com"
-});
+  authDomain: "apartmentvoting.firebaseapp.com",
+  databaseURL: "https://apartmentvoting-default-rtdb.firebaseio.com",
+  projectId: "apartmentvoting",
+  storageBucket: "apartmentvoting.firebasestorage.app",
+  messagingSenderId: "985145600430",
+  appId: "1:985145600430:web:c4877654d87ccd4b74803f"
+};
 
+const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const VOTING_END = new Date(2026,0,7,15,30);
 
-let hasSwitched = false;
+const END_TIME = new Date("2026-01-07T15:30:00+09:00").getTime();
+const VOTE_KEY = "apartmentVote_2026";
+
+let currentClass = null;
+let scores = { quality:null, spelling:null, creativity:null, english:null };
+
+const home = document.getElementById("home");
+const votePage = document.getElementById("votePage");
+const resultsPage = document.getElementById("resultsPage");
+
+function isVotingOver() {
+  return Date.now() >= END_TIME;
+}
+
+function showResults() {
+  home.classList.add("hidden");
+  votePage.classList.add("hidden");
+  resultsPage.classList.remove("hidden");
+}
 
 function updateCountdown() {
-  const now = new Date();
-  const diff = VOTING_END - now;
-  const el = document.getElementById("countdown");
+  const now = Date.now();
+  const diff = END_TIME - now;
 
   if (diff <= 0) {
-    el.textContent = "⛔ 투표 종료";
-    el.style.color = "#c62828";
-    autoShowResults();
+    document.getElementById("countdown").textContent = "투표 종료";
+    showResults();
     return;
   }
 
-  const h = Math.floor(diff / 3600000);
-  const m = Math.floor(diff % 3600000 / 60000);
-  const s = Math.floor(diff % 60000 / 1000);
-
-  el.textContent = `⏰ 투표 종료까지 ${h}시간 ${m}분 ${s}초`;
-
-  if (diff <= 600000) {
-    el.style.color = "#d32f2f";
-    el.style.animation = "pulse 1s infinite";
-  }
+  const m = Math.floor(diff / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  document.getElementById("countdown").textContent =
+    `남은 시간: ${m}분 ${s}초`;
 }
 
 setInterval(updateCountdown, 1000);
 updateCountdown();
 
-function autoShowResults() {
-  if (hasSwitched) return;
-  hasSwitched = true;
-
-  document.getElementById("home").classList.add("hidden");
-  document.getElementById("resultsPage").classList.remove("hidden");
-
-  loadResults();
+/* Class buttons */
+const classLinks = document.getElementById("classLinks");
+for (let i=1;i<=8;i++) {
+  const btn = document.createElement("button");
+  btn.textContent = `${i}반`;
+  btn.onclick = () => openVote(`${i}반`);
+  classLinks.appendChild(btn);
 }
 
-function loadResults() {
-  const body = document.getElementById("resultsBody");
-  const podium = document.getElementById("podium");
-  body.innerHTML = "";
-  podium.innerHTML = "";
-
-  onValue(ref(db,"votes"), snap => {
-    const data = snap.val() || {};
-    const totals = {};
-
-    Object.values(data).forEach(v => {
-      const sum = v.quality + v.spelling + v.creativity + v.english;
-      totals[v.className] = (totals[v.className] || 0) + sum;
-
-      const d = new Date(v.time);
-      const t = d.toLocaleString('ko-KR', {
-        month:'numeric', day:'numeric', weekday:'short',
-        hour:'2-digit', minute:'2-digit', hour12:false
-      });
-
-      body.innerHTML += `
-        <tr>
-          <td>${v.className}</td>
-          <td>${v.quality}</td>
-          <td>${v.spelling}</td>
-          <td>${v.creativity}</td>
-          <td>${v.english}</td>
-          <td>${t}</td>
-        </tr>`;
-    });
-
-    Object.entries(totals)
-      .sort((a,b)=>b[1]-a[1])
-      .slice(0,3)
-      .forEach((r,i)=>{
-        podium.innerHTML += `<div style="margin:6px 0;">
-          ${['🥇','🥈','🥉'][i]} <b>${r[0]}</b> — ${r[1]}점
-        </div>`;
-      });
-
-  }, { onlyOnce:true });
+function createButtons(id, key) {
+  const el = document.getElementById(id);
+  for (let i=1;i<=5;i++) {
+    const b = document.createElement("button");
+    b.textContent = i;
+    b.onclick = () => {
+      scores[key] = i;
+      [...el.children].forEach(x=>x.classList.remove("selected"));
+      b.classList.add("selected");
+    };
+    el.appendChild(b);
+  }
 }
 
+createButtons("quality","quality");
+createButtons("spelling","spelling");
+createButtons("creativity","creativity");
+createButtons("english","english");
+
+function openVote(cls) {
+  if (isVotingOver()) {
+    showResults();
+    return;
+  }
+
+  if (localStorage.getItem(VOTE_KEY)) {
+    alert("이미 이 기기에서 투표하였습니다.");
+    return;
+  }
+
+  currentClass = cls;
+  scores = { quality:null, spelling:null, creativity:null, english:null };
+  document.getElementById("voteTitle").textContent = cls + " 투표";
+
+  home.classList.add("hidden");
+  votePage.classList.remove("hidden");
+}
+
+document.getElementById("submitBtn").onclick = async () => {
+  if (Object.values(scores).includes(null)) {
+    alert("모든 항목을 선택하세요.");
+    return;
+  }
+
+  await push(ref(db,"votes"), {
+    className: currentClass,
+    ...scores,
+    time: new Date().toLocaleString("ko-KR", {
+      month:"numeric", day:"numeric",
+      hour:"2-digit", minute:"2-digit"
+    })
+  });
+
+  localStorage.setItem(VOTE_KEY, "true");
+  alert("투표가 완료되었습니다.");
+  votePage.classList.add("hidden");
+  home.classList.remove("hidden");
+};
+
+/* Results + counter */
 onValue(ref(db,"votes"), snap => {
+  const data = snap.val() || {};
   document.getElementById("totalCounter").textContent =
-    "총 투표 수: " + (snap.val() ? Object.keys(snap.val()).length : 0);
-});
-</script>
+    "총 투표 수: " + Object.keys(data).length;
 
+  let html = "";
+  Object.values(data).forEach(v => {
+    const sum = v.quality + v.spelling + v.creativity + v.english;
+    html += `<div>${v.className} | ${sum}점 | ${v.time}</div>`;
+  });
+  document.getElementById("resultsList").innerHTML = html;
+});
+
+if (isVotingOver()) showResults();
+
+</script>
 </body>
 </html>
