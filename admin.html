@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>관리자 페이지</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #resetBtn { background: #d9534f; color: white; padding: 8px 12px; border: none; cursor: pointer; margin-bottom: 20px; }
+    #chartContainer { width: 600px; height: 400px; }
+    #backBtn { margin-top: 20px; background: #0078d7; color: white; padding: 8px 12px; border: none; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>관리자 페이지</h1>
+  <button id="resetBtn">모든 투표 삭제</button>
+  <div id="chartContainer">
+    <canvas id="votesChart"></canvas>
+  </div>
+  <button id="backBtn" onclick="location.href='index.html'">메인 페이지로 돌아가기</button>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+    import Chart from "https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js";
+
+    // Firebase 설정
+    const firebaseConfig = {
+      apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
+      authDomain: "apartmentvoting.firebaseapp.com",
+      databaseURL: "https://apartmentvoting-default-rtdb.firebaseio.com",
+      projectId: "apartmentvoting",
+      storageBucket: "apartmentvoting.firebasestorage.app",
+      messagingSenderId: "985145600430",
+      appId: "1:985145600430:web:c4877654d87ccd4b74803f",
+      measurementId: "G-H1W896MCWF"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const votesRef = ref(db, "votes");
+
+    // Reset button
+    document.getElementById("resetBtn").onclick = async () => {
+      const password = prompt("관리자 비밀번호를 입력하세요:");
+      if (password === "delete") {
+        await
