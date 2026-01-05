@@ -1,276 +1,167 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>5학년 아파트 투표</title>
-
-<style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f4f6f8;
-  margin: 0;
-  padding: 0;
-  text-align: center;
-}
-
-.container {
-  max-width: 480px;
-  margin: 20px auto;
-  background: white;
-  border-radius: 14px;
-  padding: 20px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.1);
-}
-
-h1 {
-  margin-bottom: 5px;
-}
-
-.notice {
-  color: red;
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-
-#countdown {
-  font-size: 1.4em;
-  font-weight: bold;
-  color: #b00000;
-  margin-bottom: 15px;
-}
-
-button {
-  padding: 10px 14px;
-  margin: 6px;
-  font-size: 1em;
-  border-radius: 8px;
-  border: none;
-  background: #0078d7;
-  color: white;
-}
-
-button:disabled {
-  background: #aaa;
-}
-
-.score-buttons {
-  margin: 10px 0;
-}
-
-.score-buttons button {
-  background: #eee;
-  color: black;
-  border: 1px solid #ccc;
-}
-
-.score-buttons button.selected {
-  background: #0078d7;
-  color: white;
-}
-
-.hidden {
-  display: none;
-}
-
-.vote-item {
-  margin-bottom: 14px;
-}
-
-#resultsList {
-  text-align: left;
-  font-size: 0.9em;
-}
-</style>
+  <title>Apartment Voting</title>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .apartment { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
+    h2 { margin-top: 0; }
+    .category { margin: 10px 0; }
+    button { margin-top: 10px; }
+    #results { margin-top: 30px; white-space: pre-wrap; }
+  </style>
 </head>
-
 <body>
+  <h1>Vote for Apartments</h1>
+  <p>Please log in first, then rate each apartment on Quality, Spelling, Creativity, and Use of English.</p>
 
-<div class="container">
+  <!-- Login -->
+  <button onclick="login()">Login with Google</button>
+  <p id="userInfo"></p>
 
-  <h1>5학년 아파트 투표</h1>
-  <div class="notice">*교사 1인당 1회만 투표 가능합니다*</div>
-  <div id="countdown">투표 종료까지 계산 중...</div>
-
-  <!-- HOME -->
-  <div id="home">
-    <p>반을 선택하세요</p>
-    <div id="classLinks"></div>
-    <div id="totalCounter">총 투표 수: 0</div>
+  <!-- Apartment Example -->
+  <div class="apartment" id="apt1">
+    <h2>Apartment 1</h2>
+    <div class="category">Quality:
+      <input type="number" id="apt1-quality" min="1" max="5">
+    </div>
+    <div class="category">Spelling:
+      <input type="number" id="apt1-spelling" min="1" max="5">
+    </div>
+    <div class="category">Creativity:
+      <input type="number" id="apt1-creativity" min="1" max="5">
+    </div>
+    <div class="category">Use of English:
+      <input type="number" id="apt1-english" min="1" max="5">
+    </div>
+    <button onclick="submitVote('apt1')">Submit Vote</button>
   </div>
 
-  <!-- VOTING -->
-  <div id="votePage" class="hidden">
-    <h2 id="voteTitle"></h2>
+  <!-- Add more apartments by copying the block above -->
 
-    <div class="vote-item">품질
-      <div class="score-buttons" id="quality"></div>
-    </div>
-
-    <div class="vote-item">맞춤법
-      <div class="score-buttons" id="spelling"></div>
-    </div>
-
-    <div class="vote-item">창의성
-      <div class="score-buttons" id="creativity"></div>
-    </div>
-
-    <div class="vote-item">영어 사용
-      <div class="score-buttons" id="english"></div>
-    </div>
-
-    <button id="submitBtn">투표 제출</button>
+  <!-- Results -->
+  <div id="results">
+    <h2>Results</h2>
+    <pre id="resultsText">Loading...</pre>
   </div>
 
-  <!-- RESULTS -->
-  <div id="resultsPage" class="hidden">
-    <h2>투표 결과</h2>
-    <div id="resultsList"></div>
-  </div>
+  <!-- Firebase SDKs -->
+  <script type="module">
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
-</div>
-
-<!-- FIREBASE -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
-  authDomain: "apartmentvoting.firebaseapp.com",
-  databaseURL: "https://apartmentvoting-default-rtdb.firebaseio.com",
-  projectId: "apartmentvoting",
-  storageBucket: "apartmentvoting.firebasestorage.app",
-  messagingSenderId: "985145600430",
-  appId: "1:985145600430:web:c4877654d87ccd4b74803f"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-const END_TIME = new Date("2026-01-07T15:30:00+09:00").getTime();
-const VOTE_KEY = "apartmentVote_2026";
-
-let currentClass = null;
-let scores = { quality:null, spelling:null, creativity:null, english:null };
-
-const home = document.getElementById("home");
-const votePage = document.getElementById("votePage");
-const resultsPage = document.getElementById("resultsPage");
-
-function isVotingOver() {
-  return Date.now() >= END_TIME;
-}
-
-function showResults() {
-  home.classList.add("hidden");
-  votePage.classList.add("hidden");
-  resultsPage.classList.remove("hidden");
-}
-
-function updateCountdown() {
-  const now = Date.now();
-  const diff = END_TIME - now;
-
-  if (diff <= 0) {
-    document.getElementById("countdown").textContent = "투표 종료";
-    showResults();
-    return;
-  }
-
-  const m = Math.floor(diff / 60000);
-  const s = Math.floor((diff % 60000) / 1000);
-  document.getElementById("countdown").textContent =
-    `남은 시간: ${m}분 ${s}초`;
-}
-
-setInterval(updateCountdown, 1000);
-updateCountdown();
-
-/* Class buttons */
-const classLinks = document.getElementById("classLinks");
-for (let i=1;i<=8;i++) {
-  const btn = document.createElement("button");
-  btn.textContent = `${i}반`;
-  btn.onclick = () => openVote(`${i}반`);
-  classLinks.appendChild(btn);
-}
-
-function createButtons(id, key) {
-  const el = document.getElementById(id);
-  for (let i=1;i<=5;i++) {
-    const b = document.createElement("button");
-    b.textContent = i;
-    b.onclick = () => {
-      scores[key] = i;
-      [...el.children].forEach(x=>x.classList.remove("selected"));
-      b.classList.add("selected");
+    // Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
+      authDomain: "apartmentvoting.firebaseapp.com",
+      projectId: "apartmentvoting",
+      storageBucket: "apartmentvoting.firebasestorage.app",
+      messagingSenderId: "985145600430",
+      appId: "1:985145600430:web:c4877654d87ccd4b74803f",
+      measurementId: "G-H1W896MCWF"
     };
-    el.appendChild(b);
-  }
-}
 
-createButtons("quality","quality");
-createButtons("spelling","spelling");
-createButtons("creativity","creativity");
-createButtons("english","english");
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
 
-function openVote(cls) {
-  if (isVotingOver()) {
-    showResults();
-    return;
-  }
+    // Login
+    window.login = function() {
+      signInWithPopup(auth, provider)
+        .then((result) => {
+          const user = result.user;
+          document.getElementById("userInfo").textContent = "Logged in as: " + user.email;
+        })
+        .catch((error) => {
+          console.error("Login error:", error);
+        });
+    };
 
-  if (localStorage.getItem(VOTE_KEY)) {
-    alert("이미 이 기기에서 투표하였습니다.");
-    return;
-  }
+    // Voting period restriction
+    function withinVotingPeriod() {
+      const now = new Date();
+      const start = new Date("2026-01-05T15:00:00"); // Monday 3pm
+      const end = new Date("2026-01-07T15:00:00");   // Wednesday 3pm
+      return now >= start && now <= end;
+    }
 
-  currentClass = cls;
-  scores = { quality:null, spelling:null, creativity:null, english:null };
-  document.getElementById("voteTitle").textContent = cls + " 투표";
+    // Submit vote
+    window.submitVote = async function(apartmentId) {
+      const user = auth.currentUser;
+      if (!user) {
+        alert("Please log in first.");
+        return;
+      }
+      if (!withinVotingPeriod()) {
+        alert("Voting is closed.");
+        return;
+      }
 
-  home.classList.add("hidden");
-  votePage.classList.remove("hidden");
-}
+      // Check if already voted
+      const q = query(collection(db, "votes"),
+                      where("apartment", "==", apartmentId),
+                      where("userId", "==", user.uid));
+      const existing = await getDocs(q);
+      if (!existing.empty) {
+        alert("You have already voted for this apartment.");
+        return;
+      }
 
-document.getElementById("submitBtn").onclick = async () => {
-  if (Object.values(scores).includes(null)) {
-    alert("모든 항목을 선택하세요.");
-    return;
-  }
+      // Collect scores
+      const quality = parseInt(document.getElementById(apartmentId + "-quality").value);
+      const spelling = parseInt(document.getElementById(apartmentId + "-spelling").value);
+      const creativity = parseInt(document.getElementById(apartmentId + "-creativity").value);
+      const english = parseInt(document.getElementById(apartmentId + "-english").value);
 
-  await push(ref(db,"votes"), {
-    className: currentClass,
-    ...scores,
-    time: new Date().toLocaleString("ko-KR", {
-      month:"numeric", day:"numeric",
-      hour:"2-digit", minute:"2-digit"
-    })
-  });
+      await addDoc(collection(db, "votes"), {
+        apartment: apartmentId,
+        quality,
+        spelling,
+        creativity,
+        english,
+        userId: user.uid,
+        userEmail: user.email,
+        timestamp: new Date()
+      });
 
-  localStorage.setItem(VOTE_KEY, "true");
-  alert("투표가 완료되었습니다.");
-  votePage.classList.add("hidden");
-  home.classList.remove("hidden");
-};
+      alert("Vote submitted!");
+    };
 
-/* Results + counter */
-onValue(ref(db,"votes"), snap => {
-  const data = snap.val() || {};
-  document.getElementById("totalCounter").textContent =
-    "총 투표 수: " + Object.keys(data).length;
+    // Live results
+    onSnapshot(collection(db, "votes"), (snapshot) => {
+      let results = {};
+      snapshot.forEach((doc) => {
+        let v = doc.data();
+        if (!results[v.apartment]) {
+          results[v.apartment] = { quality: [], spelling: [], creativity: [], english: [] };
+        }
+        results[v.apartment].quality.push(v.quality);
+        results[v.apartment].spelling.push(v.spelling);
+        results[v.apartment].creativity.push(v.creativity);
+        results[v.apartment].english.push(v.english);
+      });
 
-  let html = "";
-  Object.values(data).forEach(v => {
-    const sum = v.quality + v.spelling + v.creativity + v.english;
-    html += `<div>${v.className} | ${sum}점 | ${v.time}</div>`;
-  });
-  document.getElementById("resultsList").innerHTML = html;
-});
+      let text = "";
+      for (let apt in results) {
+        text += `${apt}:\n`;
+        text += `  Quality: ${avg(results[apt].quality)}\n`;
+        text += `  Spelling: ${avg(results[apt].spelling)}\n`;
+        text += `  Creativity: ${avg(results[apt].creativity)}\n`;
+        text += `  Use of English: ${avg(results[apt].english)}\n\n`;
+      }
+      document.getElementById("resultsText").textContent = text;
+    });
 
-if (isVotingOver()) showResults();
-
-</script>
+    function avg(arr) {
+      return (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2);
+    }
+  </script>
 </body>
 </html>
