@@ -9,6 +9,8 @@
     .hidden { display: none; }
     button { margin-top: 10px; }
     #home h2 { margin-bottom: 5px; }
+    #totalCounter { font-size: 1.5em; font-weight: bold; margin-top: 30px; }
+    #adminBtn { margin-top: 20px; background: #d9534f; color: white; padding: 8px 12px; border: none; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -19,6 +21,12 @@
   <div id="home">
     <h2>반 목록</h2>
     <div id="classLinks"></div>
+
+    <!-- Total counter -->
+    <div id="totalCounter">총 투표 수: 0</div>
+
+    <!-- Admin button -->
+    <button id="adminBtn" onclick="adminDelete()">관리자: 모든 투표 삭제</button>
   </div>
 
   <!-- Voting Page -->
@@ -35,7 +43,7 @@
   <!-- Firebase SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
     // Firebase 설정
     const firebaseConfig = {
@@ -62,13 +70,6 @@
       link.className = "class-link";
       link.onclick = () => openVotePage(`${i}반`);
       classLinksDiv.appendChild(link);
-
-      // 투표 수 표시
-      const countSpan = document.createElement("span");
-      countSpan.id = `count-${i}반`;
-      countSpan.style.marginLeft = "10px";
-      countSpan.textContent = "(투표 수: 0)";
-      classLinksDiv.appendChild(countSpan);
       classLinksDiv.appendChild(document.createElement("br"));
     }
 
@@ -115,20 +116,26 @@
       document.getElementById("home").classList.remove("hidden");
     };
 
-    // 투표 수 실시간 업데이트
+    // 총 투표 수 실시간 업데이트
     onSnapshot(collection(db, "votes"), (snapshot) => {
-      let counts = {};
-      snapshot.forEach((doc) => {
-        let v = doc.data();
-        counts[v.className] = (counts[v.className] || 0) + 1;
-      });
-
-      for (let i = 1; i <= 8; i++) {
-        const className = `${i}반`;
-        const count = counts[className] || 0;
-        document.getElementById(`count-${className}`).textContent = `(투표 수: ${count})`;
-      }
+      const total = snapshot.size;
+      document.getElementById("totalCounter").textContent = "총 투표 수: " + total;
     });
+
+    // 관리자 삭제 기능
+    window.adminDelete = async function() {
+      const password = prompt("관리자 비밀번호를 입력하세요:");
+      if (password === "delete") {
+        const snapshot = await onSnapshot(collection(db, "votes"), async (snap) => {
+          snap.forEach(async (docItem) => {
+            await deleteDoc(doc(db, "votes", docItem.id));
+          });
+        });
+        alert("모든 투표 데이터가 삭제되었습니다!");
+      } else {
+        alert("비밀번호가 올바르지 않습니다.");
+      }
+    };
   </script>
 </body>
 </html>
