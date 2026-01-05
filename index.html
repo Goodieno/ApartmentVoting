@@ -1,167 +1,272 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-  <title>Apartment Voting</title>
-  <meta charset="UTF-8">
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    .apartment { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
-    h2 { margin-top: 0; }
-    .category { margin: 10px 0; }
-    button { margin-top: 10px; }
-    #results { margin-top: 30px; white-space: pre-wrap; }
-  </style>
+<meta charset="UTF-8">
+<title>아파트 투표</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  margin: 12px;
+  background: linear-gradient(180deg, #f4f6f8, #eef1f5);
+  text-align: center;
+}
+
+h1 { font-size: 1.7em; margin-bottom: 6px; }
+h2 { font-size: 1.3em; }
+
+.panel {
+  background: #fff;
+  border-radius: 18px;
+  padding: 20px 16px;
+  max-width: 720px;
+  margin: 14px auto;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+button {
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: none;
+  background: #e0e0e0;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.hidden { display: none; }
+
+#classLinks {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.score-buttons {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  max-width: 420px;
+  margin: 8px auto 18px auto;
+}
+
+.score-buttons button.selected {
+  background: #0078d7;
+  color: white;
+  font-weight: bold;
+}
+
+input[type=password] {
+  width: 90%;
+  max-width: 360px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  font-size: 0.9em;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 6px;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@media (min-width:600px) {
+  #classLinks { grid-template-columns: repeat(4, 1fr); }
+}
+</style>
 </head>
+
 <body>
-  <h1>Vote for Apartments</h1>
-  <p>Please log in first, then rate each apartment on Quality, Spelling, Creativity, and Use of English.</p>
 
-  <!-- Login -->
-  <button onclick="login()">Login with Google</button>
-  <p id="userInfo"></p>
+<h1>5학년 아파트 투표</h1>
+<p style="color:#c62828; font-weight:bold;">
+* 교사당 1회만 투표해 주세요 *
+</p>
 
-  <!-- Apartment Example -->
-  <div class="apartment" id="apt1">
-    <h2>Apartment 1</h2>
-    <div class="category">Quality:
-      <input type="number" id="apt1-quality" min="1" max="5">
-    </div>
-    <div class="category">Spelling:
-      <input type="number" id="apt1-spelling" min="1" max="5">
-    </div>
-    <div class="category">Creativity:
-      <input type="number" id="apt1-creativity" min="1" max="5">
-    </div>
-    <div class="category">Use of English:
-      <input type="number" id="apt1-english" min="1" max="5">
-    </div>
-    <button onclick="submitVote('apt1')">Submit Vote</button>
+<div id="countdown" style="font-weight:bold; font-size:1.15em; margin:10px 0;"></div>
+
+<!-- HOME -->
+<div id="home" class="panel">
+  <h2>반 목록</h2>
+  <div id="classLinks"></div>
+  <div id="totalCounter" style="margin-top:14px; font-weight:bold;">총 투표 수: 0</div>
+  <button style="margin-top:14px;" onclick="openAdmin()">관리자</button>
+</div>
+
+<!-- VOTING -->
+<div id="votePage" class="panel hidden">
+  <h2 id="voteTitle"></h2>
+  <p>각 항목을 1점 ~ 5점으로 평가하세요.</p>
+
+  <div>품질<div class="score-buttons" id="quality"></div></div>
+  <div>맞춤법<div class="score-buttons" id="spelling"></div></div>
+  <div>창의성<div class="score-buttons" id="creativity"></div></div>
+  <div>영어 사용<div class="score-buttons" id="english"></div></div>
+
+  <button onclick="submitVote()">투표 제출</button>
+  <button onclick="goHome()">취소</button>
+</div>
+
+<!-- ADMIN -->
+<div id="adminPage" class="panel hidden">
+  <h2>관리자</h2>
+  <input type="password" id="adminPass" placeholder="password">
+  <br><br>
+  <button onclick="viewResults()">결과 보기</button>
+  <button onclick="deleteAll()">전체 삭제</button>
+  <button onclick="goHome()">돌아가기</button>
+
+  <div id="results" class="hidden">
+    <h3>🏆 결과</h3>
+    <div id="podium"></div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>반</th><th>품질</th><th>맞춤법</th>
+          <th>창의성</th><th>영어</th><th>시간</th>
+        </tr>
+      </thead>
+      <tbody id="resultsBody"></tbody>
+    </table>
   </div>
+</div>
 
-  <!-- Add more apartments by copying the block above -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-  <!-- Results -->
-  <div id="results">
-    <h2>Results</h2>
-    <pre id="resultsText">Loading...</pre>
-  </div>
+const app = initializeApp({
+  apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
+  databaseURL: "https://apartmentvoting-default-rtdb.firebaseio.com"
+});
 
-  <!-- Firebase SDKs -->
-  <script type="module">
-    // Import Firebase SDKs
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+const db = getDatabase(app);
+const VOTING_END = new Date(2026,0,7,15,30);
 
-    // Your Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
-      authDomain: "apartmentvoting.firebaseapp.com",
-      projectId: "apartmentvoting",
-      storageBucket: "apartmentvoting.firebasestorage.app",
-      messagingSenderId: "985145600430",
-      appId: "1:985145600430:web:c4877654d87ccd4b74803f",
-      measurementId: "G-H1W896MCWF"
+let currentClass = null;
+let scores = {};
+
+function updateCountdown() {
+  const diff = VOTING_END - new Date();
+  const el = document.getElementById("countdown");
+
+  if (diff <= 0) {
+    el.textContent = "⛔ 투표 종료";
+    el.style.color = "#c62828";
+    return;
+  }
+
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor(diff % 3600000 / 60000);
+  const s = Math.floor(diff % 60000 / 1000);
+
+  el.textContent = `⏰ 투표 종료까지 ${h}시간 ${m}분 ${s}초`;
+
+  if (diff <= 600000) {
+    el.style.color = "#d32f2f";
+    el.style.animation = "pulse 1s infinite";
+  }
+}
+
+setInterval(updateCountdown, 1000);
+updateCountdown();
+
+const classLinks = document.getElementById("classLinks");
+for (let i=1;i<=8;i++) {
+  const b = document.createElement("button");
+  b.textContent = `${i}반`;
+  b.onclick = () => openVotePage(`${i}반`);
+  classLinks.appendChild(b);
+}
+
+["quality","spelling","creativity","english"].forEach(k=>{
+  const c=document.getElementById(k);
+  for(let i=1;i<=5;i++){
+    const b=document.createElement("button");
+    b.textContent=i;
+    b.onclick=()=>{
+      scores[k]=i;
+      [...c.children].forEach(x=>x.classList.remove("selected"));
+      b.classList.add("selected");
     };
+    c.appendChild(b);
+  }
+});
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
+window.openVotePage = cls => {
+  if (localStorage.getItem("apartmentVoted")) {
+    alert("이 기기에서는 이미 투표했습니다.");
+    return;
+  }
+  currentClass = cls;
+  scores = {};
+  document.getElementById("voteTitle").textContent = cls;
+  show("votePage");
+};
 
-    // Login
-    window.login = function() {
-      signInWithPopup(auth, provider)
-        .then((result) => {
-          const user = result.user;
-          document.getElementById("userInfo").textContent = "Logged in as: " + user.email;
-        })
-        .catch((error) => {
-          console.error("Login error:", error);
-        });
-    };
+window.submitVote = async () => {
+  if (new Date() > VOTING_END) return alert("투표 종료");
+  if (Object.keys(scores).length < 4) return alert("모두 선택하세요");
 
-    // Voting period restriction
-    function withinVotingPeriod() {
-      const now = new Date();
-      const start = new Date("2026-01-05T15:00:00"); // Monday 3pm
-      const end = new Date("2026-01-07T15:00:00");   // Wednesday 3pm
-      return now >= start && now <= end;
-    }
+  await push(ref(db,"votes"), { className: currentClass, ...scores, time: Date.now() });
+  localStorage.setItem("apartmentVoted","true");
+  alert("투표 완료");
+  goHome();
+};
 
-    // Submit vote
-    window.submitVote = async function(apartmentId) {
-      const user = auth.currentUser;
-      if (!user) {
-        alert("Please log in first.");
-        return;
-      }
-      if (!withinVotingPeriod()) {
-        alert("Voting is closed.");
-        return;
-      }
+window.openAdmin = () => show("adminPage");
+window.goHome = () => show("home");
 
-      // Check if already voted
-      const q = query(collection(db, "votes"),
-                      where("apartment", "==", apartmentId),
-                      where("userId", "==", user.uid));
-      const existing = await getDocs(q);
-      if (!existing.empty) {
-        alert("You have already voted for this apartment.");
-        return;
-      }
+window.viewResults = () => {
+  if (adminPass.value !== "delete") return alert("비밀번호 오류");
+  results.classList.remove("hidden");
+  resultsBody.innerHTML = "";
+  podium.innerHTML = "";
 
-      // Collect scores
-      const quality = parseInt(document.getElementById(apartmentId + "-quality").value);
-      const spelling = parseInt(document.getElementById(apartmentId + "-spelling").value);
-      const creativity = parseInt(document.getElementById(apartmentId + "-creativity").value);
-      const english = parseInt(document.getElementById(apartmentId + "-english").value);
+  onValue(ref(db,"votes"), snap => {
+    const data = snap.val() || {};
+    const totals = {};
 
-      await addDoc(collection(db, "votes"), {
-        apartment: apartmentId,
-        quality,
-        spelling,
-        creativity,
-        english,
-        userId: user.uid,
-        userEmail: user.email,
-        timestamp: new Date()
-      });
-
-      alert("Vote submitted!");
-    };
-
-    // Live results
-    onSnapshot(collection(db, "votes"), (snapshot) => {
-      let results = {};
-      snapshot.forEach((doc) => {
-        let v = doc.data();
-        if (!results[v.apartment]) {
-          results[v.apartment] = { quality: [], spelling: [], creativity: [], english: [] };
-        }
-        results[v.apartment].quality.push(v.quality);
-        results[v.apartment].spelling.push(v.spelling);
-        results[v.apartment].creativity.push(v.creativity);
-        results[v.apartment].english.push(v.english);
-      });
-
-      let text = "";
-      for (let apt in results) {
-        text += `${apt}:\n`;
-        text += `  Quality: ${avg(results[apt].quality)}\n`;
-        text += `  Spelling: ${avg(results[apt].spelling)}\n`;
-        text += `  Creativity: ${avg(results[apt].creativity)}\n`;
-        text += `  Use of English: ${avg(results[apt].english)}\n\n`;
-      }
-      document.getElementById("resultsText").textContent = text;
+    Object.values(data).forEach(v=>{
+      totals[v.className]=(totals[v.className]||0)+(v.quality+v.spelling+v.creativity+v.english);
+      const d=new Date(v.time);
+      const t=d.toLocaleString('ko-KR',{month:'numeric',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false});
+      resultsBody.innerHTML+=`<tr><td>${v.className}</td><td>${v.quality}</td><td>${v.spelling}</td><td>${v.creativity}</td><td>${v.english}</td><td>${t}</td></tr>`;
     });
 
-    function avg(arr) {
-      return (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2);
-    }
-  </script>
+    Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,3).forEach((r,i)=>{
+      podium.innerHTML+=`<div>${['🥇','🥈','🥉'][i]} ${r[0]} — ${r[1]}점</div>`;
+    });
+  },{onlyOnce:true});
+};
+
+window.deleteAll = async () => {
+  if (adminPass.value !== "delete") return alert("비밀번호 오류");
+  if (confirm("모두 삭제합니까?")) await remove(ref(db,"votes"));
+};
+
+function show(id){
+  ["home","votePage","adminPage"].forEach(x=>document.getElementById(x).classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+}
+
+onValue(ref(db,"votes"), snap=>{
+  totalCounter.textContent = "총 투표 수: " + (snap.val()?Object.keys(snap.val()).length:0);
+});
+</script>
 </body>
 </html>
