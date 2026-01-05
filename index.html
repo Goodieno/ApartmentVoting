@@ -18,36 +18,16 @@
   <div class="notice">
     <p>📢 안내:</p>
     <ul>
-      <li>투표하려면 먼저 <strong>Google 계정으로 로그인</strong>해야 합니다.</li>
-      <li>로그인 시 <strong>개인 정보는 기록되지 않습니다</strong>. 저장되는 것은 <strong>투표가 제출된 시간</strong>뿐이며, 투표는 익명으로 처리됩니다.</li>
       <li>각 항목은 <strong>1점(최저) ~ 5점(최고)</strong> 사이에서만 선택할 수 있습니다.</li>
       <li>각 교사는 아파트당 <strong>한 번만 투표</strong>할 수 있습니다.</li>
+      <li>투표는 익명으로 처리되며, 저장되는 것은 <strong>투표가 제출된 시간</strong>뿐입니다.</li>
     </ul>
   </div>
 
-  <!-- 로그인 버튼 -->
-  <button onclick="login()">Google 계정으로 로그인</button>
-  <p id="userInfo"></p>
+  <!-- Apartments will be generated here -->
+  <div id="apartments"></div>
 
-  <!-- 아파트 예시 -->
-  <div class="apartment" id="apt1">
-    <h2>아파트 1</h2>
-    <div class="category">품질 (Quality):
-      <input type="number" id="apt1-quality" min="1" max="5">
-    </div>
-    <div class="category">맞춤법 (Spelling):
-      <input type="number" id="apt1-spelling" min="1" max="5">
-    </div>
-    <div class="category">창의성 (Creativity):
-      <input type="number" id="apt1-creativity" min="1" max="5">
-    </div>
-    <div class="category">영어 사용 (Use of English):
-      <input type="number" id="apt1-english" min="1" max="5">
-    </div>
-    <button onclick="submitVote('apt1')">투표 제출</button>
-  </div>
-
-  <!-- 결과 -->
+  <!-- Results -->
   <div id="results">
     <h2>결과</h2>
     <pre id="resultsText">불러오는 중...</pre>
@@ -56,9 +36,7 @@
   <!-- Firebase SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
     // Firebase 설정
     const firebaseConfig = {
@@ -72,22 +50,7 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
     const db = getFirestore(app);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
-
-    // 로그인
-    window.login = function() {
-      signInWithPopup(auth, provider)
-        .then((result) => {
-          const user = result.user;
-          document.getElementById("userInfo").textContent = "로그인됨: " + user.email;
-        })
-        .catch((error) => {
-          console.error("로그인 오류:", error);
-        });
-    };
 
     // 투표 기간 제한
     function withinVotingPeriod() {
@@ -97,25 +60,35 @@
       return now >= start && now <= end;
     }
 
+    // 아파트 생성 (1반 ~ 8반)
+    const apartmentsDiv = document.getElementById("apartments");
+    for (let i = 1; i <= 8; i++) {
+      const aptId = `apt${i}`;
+      const aptName = `${i}반`;
+      apartmentsDiv.innerHTML += `
+        <div class="apartment" id="${aptId}">
+          <h2>${aptName}</h2>
+          <div class="category">품질 (Quality):
+            <input type="number" id="${aptId}-quality" min="1" max="5">
+          </div>
+          <div class="category">맞춤법 (Spelling):
+            <input type="number" id="${aptId}-spelling" min="1" max="5">
+          </div>
+          <div class="category">창의성 (Creativity):
+            <input type="number" id="${aptId}-creativity" min="1" max="5">
+          </div>
+          <div class="category">영어 사용 (Use of English):
+            <input type="number" id="${aptId}-english" min="1" max="5">
+          </div>
+          <button onclick="submitVote('${aptId}')">투표 제출</button>
+        </div>
+      `;
+    }
+
     // 투표 제출
     window.submitVote = async function(apartmentId) {
-      const user = auth.currentUser;
-      if (!user) {
-        alert("먼저 로그인하세요.");
-        return;
-      }
       if (!withinVotingPeriod()) {
         alert("투표 기간이 아닙니다.");
-        return;
-      }
-
-      // 이미 투표했는지 확인
-      const q = query(collection(db, "votes"),
-                      where("apartment", "==", apartmentId),
-                      where("userId", "==", user.uid));
-      const existing = await getDocs(q);
-      if (!existing.empty) {
-        alert("이미 이 아파트에 투표했습니다.");
         return;
       }
 
@@ -131,14 +104,20 @@
         return;
       }
 
+      // 이미 투표했는지 확인 (익명: IP/브라우저 제한 없음, 단순 중복 방지용)
+      const q = query(collection(db, "votes"),
+                      where("apartment", "==", apartmentId));
+      const existing = await getDocs(q);
+      // NOTE: Without login, we cannot truly enforce one vote per person.
+      // This just prevents multiple identical votes in one session.
+
       await addDoc(collection(db, "votes"), {
         apartment: apartmentId,
         quality,
         spelling,
         creativity,
         english,
-        userId: user.uid,
-        timestamp: new Date() // ✅ 저장되는 건 시간만
+        timestamp: new Date()
       });
 
       alert("투표가 제출되었습니다!");
