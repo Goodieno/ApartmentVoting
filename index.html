@@ -110,9 +110,10 @@ onValue(ref(db, "votes"), snap => {
   // 날짜만 표시 (시간 제거)
   if (firstDate) {
     const d = new Date(firstDate);
-    voteDate.textContent = `투표일: ${d.toLocaleDateString('ko-KR', {
-      year: 'numeric', month: 'long', day: 'numeric'
-    })}`;
+    const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    voteDate.textContent = `투표일: ${weekday} ${month}.${day}`;
   }
 
   // Podium
@@ -124,17 +125,26 @@ onValue(ref(db, "votes"), snap => {
     });
 
   // Table rows
-  Object.keys(perClass).forEach(cls => {
-    perClass[cls].forEach(v => {
-      resultsBody.innerHTML += `
-        <tr>
-          <td>${cls}</td>
-          <td>${v.quality}</td>
-          <td>${v.spelling}</td>
-          <td>${v.creativity}</td>
-          <td>${v.english}</td>
-          <td><b>${v.sum}</b></td>
-        </tr>`;
+  Object.keys(perClass)
+    .sort((a,b)=>{
+      const at = Math.min(...perClass[a].map(v=>v.time));
+      const bt = Math.min(...perClass[b].map(v=>v.time));
+      return at - bt;
+    })
+    .forEach(cls => {
+      perClass[cls]
+        .sort((x,y)=>x.time - y.time)
+        .forEach(v => {
+          resultsBody.innerHTML += `
+            <tr>
+              <td>${cls}</td>
+              <td>${v.quality}</td>
+              <td>${v.spelling}</td>
+              <td>${v.creativity}</td>
+              <td>${v.english}</td>
+              <td><b>${v.sum}</b></td>
+            </tr>`;
+        });
     });
   });
 });
