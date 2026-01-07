@@ -99,7 +99,8 @@ onValue(ref(db, "votes"), snap => {
 
   const totals = {};
   const rows = [];
-  let earliestTime = null;
+  // 날짜 표시 기준 (가장 안전하게 투표 종료일 기준 사용)
+  let displayDate = null;
 
   Object.values(data).forEach(v => {
     if (!v.className) return;
@@ -109,14 +110,17 @@ onValue(ref(db, "votes"), snap => {
 
     rows.push({ ...v, sum });
 
-    if (!earliestTime || v.time < earliestTime) earliestTime = v.time;
+    if (!displayDate && v.time) displayDate = v.time;
   });
 
   // 날짜 표시: 요일 + 월.일 (수 1.7)
-  if (earliestTime) {
-    const d = new Date(earliestTime);
+  if (displayDate) {
+    const d = new Date(displayDate);
     const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
-    voteDate.textContent = `투표일: ${weekday} ${d.getMonth()+1}.${d.getDate()}`;
+    voteDate.textContent = `투표일: ${weekday} ${d.getMonth() + 1}.${d.getDate()}`;
+  } else {
+    voteDate.textContent = '투표일 정보 없음';
+  } ${d.getMonth()+1}.${d.getDate()}`;
   }
 
   // Podium (총점 기준)
