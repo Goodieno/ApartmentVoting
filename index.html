@@ -241,12 +241,14 @@ window.viewResults = () => {
     const data = snap.val() || {};
     const totals = {};
 
-    Object.values(data).forEach(v=>{
-      totals[v.className]=(totals[v.className]||0)+(v.quality+v.spelling+v.creativity+v.english);
-      const d=new Date(v.time);
-      const t=d.toLocaleString('ko-KR',{month:'numeric',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false});
-      resultsBody.innerHTML+=`<tr><td>${v.className}</td><td>${v.quality}</td><td>${v.spelling}</td><td>${v.creativity}</td><td>${v.english}</td><td>${t}</td></tr>`;
-    });
+    Object.values(data)
+      .sort((a, b) => a.time - b.time)   // ✅ ONLY CHANGE
+      .forEach(v=>{
+        totals[v.className]=(totals[v.className]||0)+(v.quality+v.spelling+v.creativity+v.english);
+        const d=new Date(v.time);
+        const t=d.toLocaleString('ko-KR',{month:'numeric',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false});
+        resultsBody.innerHTML+=`<tr><td>${v.className}</td><td>${v.quality}</td><td>${v.spelling}</td><td>${v.creativity}</td><td>${v.english}</td><td>${t}</td></tr>`;
+      });
 
     Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,3).forEach((r,i)=>{
       podium.innerHTML+=`<div>${['🥇','🥈','🥉'][i]} ${r[0]} — ${r[1]}점</div>`;
