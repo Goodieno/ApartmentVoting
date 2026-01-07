@@ -66,6 +66,7 @@ th, td {
         <th>창의성</th>
         <th>영어</th>
         <th>합계</th>
+        <th>날짜</th>
       </tr>
     </thead>
     <tbody id="resultsBody"></tbody>
@@ -135,6 +136,10 @@ onValue(ref(db, "votes"), snap => {
   rows
     .sort((a,b)=>a.time - b.time)
     .forEach(v => {
+      const d = new Date(v.time);
+      const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
+      const dateText = `${weekday} ${d.getMonth()+1}.${d.getDate()}`;
+
       resultsBody.innerHTML += `
         <tr>
           <td>${v.className}</td>
@@ -143,6 +148,7 @@ onValue(ref(db, "votes"), snap => {
           <td>${v.creativity}</td>
           <td>${v.english}</td>
           <td><b>${v.sum}</b></td>
+          <td>${dateText}</td>
         </tr>`;
     });
 });
