@@ -157,6 +157,14 @@ const app = initializeApp({
 const db = getDatabase(app);
 const VOTING_END = new Date(2026,0,7,15,30);
 
+/* ✅ SAFE DOM REFERENCES (FIX) */
+const adminPass = document.getElementById("adminPass");
+const results = document.getElementById("results");
+const resultsBody = document.getElementById("resultsBody");
+const podium = document.getElementById("podium");
+const totalCounter = document.getElementById("totalCounter");
+/* ✅ END FIX */
+
 let currentClass = null;
 let scores = {};
 
@@ -242,7 +250,7 @@ window.viewResults = () => {
     const totals = {};
 
     Object.values(data)
-      .sort((a, b) => a.time - b.time)   // ✅ ONLY CHANGE
+      .sort((a,b)=>a.time-b.time)
       .forEach(v=>{
         totals[v.className]=(totals[v.className]||0)+(v.quality+v.spelling+v.creativity+v.english);
         const d=new Date(v.time);
