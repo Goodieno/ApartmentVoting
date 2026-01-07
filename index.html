@@ -76,6 +76,7 @@ th, td {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
+// Firebase config (unchanged)
 const app = initializeApp({
   apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
   databaseURL: "https://apartmentvoting-default-rtdb.firebaseio.com"
@@ -88,35 +89,37 @@ const voteDate = document.getElementById("voteDate");
 
 onValue(ref(db, "votes"), snap => {
   const data = snap.val();
-  if (!data) return;
+  if (!data) {
+    resultsBody.innerHTML = '<tr><td colspan="6">결과 없음</td></tr>';
+    return;
+  }
 
   resultsBody.innerHTML = "";
   podium.innerHTML = "";
 
   const totals = {};
-  const perClass = {};
-  let firstDate = null;
+  const rows = [];
+  let earliestTime = null;
 
   Object.values(data).forEach(v => {
+    if (!v.className) return;
+
     const sum = v.quality + v.spelling + v.creativity + v.english;
     totals[v.className] = (totals[v.className] || 0) + sum;
 
-    if (!perClass[v.className]) perClass[v.className] = [];
-    perClass[v.className].push({ ...v, sum });
+    rows.push({ ...v, sum });
 
-    if (!firstDate || v.time < firstDate) firstDate = v.time;
+    if (!earliestTime || v.time < earliestTime) earliestTime = v.time;
   });
 
-  // 날짜만 표시 (시간 제거)
-  if (firstDate) {
-    const d = new Date(firstDate);
+  // 날짜 표시: 요일 + 월.일 (수 1.7)
+  if (earliestTime) {
+    const d = new Date(earliestTime);
     const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
-    const month = d.getMonth() + 1;
-    const day = d.getDate();
-    voteDate.textContent = `투표일: ${weekday} ${month}.${day}`;
+    voteDate.textContent = `투표일: ${weekday} ${d.getMonth()+1}.${d.getDate()}`;
   }
 
-  // Podium
+  // Podium (총점 기준)
   Object.entries(totals)
     .sort((a,b)=>b[1]-a[1])
     .slice(0,3)
@@ -124,29 +127,20 @@ onValue(ref(db, "votes"), snap => {
       podium.innerHTML += `<div>${['🥇','🥈','🥉'][i]} ${r[0]} — ${r[1]}점</div>`;
     });
 
-  // Table rows
-  Object.keys(perClass)
-    .sort((a,b)=>{
-      const at = Math.min(...perClass[a].map(v=>v.time));
-      const bt = Math.min(...perClass[b].map(v=>v.time));
-      return at - bt;
-    })
-    .forEach(cls => {
-      perClass[cls]
-        .sort((x,y)=>x.time - y.time)
-        .forEach(v => {
-          resultsBody.innerHTML += `
-            <tr>
-              <td>${cls}</td>
-              <td>${v.quality}</td>
-              <td>${v.spelling}</td>
-              <td>${v.creativity}</td>
-              <td>${v.english}</td>
-              <td><b>${v.sum}</b></td>
-            </tr>`;
-        });
+  // 테이블: 시간순 정렬 (날짜 기준)
+  rows
+    .sort((a,b)=>a.time - b.time)
+    .forEach(v => {
+      resultsBody.innerHTML += `
+        <tr>
+          <td>${v.className}</td>
+          <td>${v.quality}</td>
+          <td>${v.spelling}</td>
+          <td>${v.creativity}</td>
+          <td>${v.english}</td>
+          <td><b>${v.sum}</b></td>
+        </tr>`;
     });
-  });
 });
 </script>
 
