@@ -11,22 +11,6 @@ body {
   margin: 12px;
   background: linear-gradient(180deg, #f4f6f8, #eef1f5);
   text-align: center;
-  overflow-x: hidden;
-}
-
-/* 😭 Endless crying rain */
-.cry-rain {
-  position: fixed;
-  top: -40px;
-  font-size: 2rem;
-  animation: cryFall linear 1;
-  opacity: 0.6;
-  pointer-events: none;
-  z-index: 0;
-}
-
-@keyframes cryFall {
-  to { transform: translateY(110vh); }
 }
 
 h1 { font-size: 1.7em; margin-bottom: 6px; }
@@ -39,9 +23,9 @@ h2 { font-size: 1.3em; }
   max-width: 900px;
   margin: 14px auto;
   box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-  position: relative;
-  z-index: 2;
 }
+
+.hidden { display: none; }
 
 table {
   width: 100%;
@@ -60,39 +44,18 @@ th, td {
   margin: 6px 0;
   font-weight: bold;
 }
-
-/* ⭐ 5반 row highlight */
-.class5 {
-  background: #fff3cd;
-  font-weight: bold;
-}
-
-/* ⭐ 5반 총점 style */
-.class5-total {
-  margin-top: 8px;
-  font-weight: bold;
-  font-size: 1.1em;
-  color: #ffeb3b;
-  text-shadow:
-    -1px -1px 0 #000,
-     1px -1px 0 #000,
-    -1px  1px 0 #000,
-     1px  1px 0 #000;
-}
 </style>
 </head>
 
 <body>
 
-<h1>5학년 아파트 투표 결과</h1>
+<h1>4학년 아파트 투표 결과</h1>
 <p style="color:#2e7d32; font-weight:bold;">투표가 종료되었습니다</p>
 <div id="voteDate" style="margin-bottom:12px; color:#555;"></div>
 
 <div class="panel">
   <h2>🏆 최종 순위</h2>
   <div class="podium" id="podium"></div>
-
-  <div id="class5Total" class="class5-total"></div>
 
   <table>
     <thead>
@@ -114,8 +77,7 @@ th, td {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-const TARGET_CLASS = "5반";
-
+// Firebase config (unchanged)
 const app = initializeApp({
   apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
   databaseURL: "https://apartmentvoting-default-rtdb.firebaseio.com"
@@ -125,18 +87,20 @@ const db = getDatabase(app);
 const resultsBody = document.getElementById("resultsBody");
 const podium = document.getElementById("podium");
 const voteDate = document.getElementById("voteDate");
-const class5TotalBox = document.getElementById("class5Total");
 
 onValue(ref(db, "votes"), snap => {
   const data = snap.val();
-  if (!data) return;
+  if (!data) {
+    resultsBody.innerHTML = '<tr><td colspan="6">결과 없음</td></tr>';
+    return;
+  }
 
   resultsBody.innerHTML = "";
   podium.innerHTML = "";
-  class5TotalBox.textContent = "";
 
   const totals = {};
   const rows = [];
+  // 날짜 표시 기준 (가장 안전하게 투표 종료일 기준 사용)
   let displayDate = null;
 
   Object.values(data).forEach(v => {
@@ -144,17 +108,23 @@ onValue(ref(db, "votes"), snap => {
 
     const sum = v.quality + v.spelling + v.creativity + v.english;
     totals[v.className] = (totals[v.className] || 0) + sum;
+
     rows.push({ ...v, sum });
 
     if (!displayDate && v.time) displayDate = v.time;
   });
 
+  // 날짜 표시: 요일 + 월.일 (수 1.7)
   if (displayDate) {
     const d = new Date(displayDate);
     const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
-    voteDate.textContent = `투표일: ${weekday} ${d.getMonth()+1}.${d.getDate()}`;
+    voteDate.textContent = `투표일: ${weekday} ${d.getMonth() + 1}.${d.getDate()}`;
+  } else {
+    voteDate.textContent = '투표일 정보 없음';
+  } ${d.getMonth()+1}.${d.getDate()}`;
   }
 
+  // Podium (총점 기준)
   Object.entries(totals)
     .sort((a,b)=>b[1]-a[1])
     .slice(0,3)
@@ -162,20 +132,16 @@ onValue(ref(db, "votes"), snap => {
       podium.innerHTML += `<div>${['🥇','🥈','🥉'][i]} ${r[0]} — ${r[1]}점</div>`;
     });
 
-  if (totals[TARGET_CLASS]) {
-    class5TotalBox.textContent = `${TARGET_CLASS} 총점: ${totals[TARGET_CLASS]}점`;
-  }
-
+  // 테이블: 시간순 정렬 (날짜 기준)
   rows
     .sort((a,b)=>a.time - b.time)
     .forEach(v => {
       const d = new Date(v.time);
       const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
       const dateText = `${weekday} ${d.getMonth()+1}.${d.getDate()}`;
-      const rowClass = v.className === TARGET_CLASS ? "class5" : "";
 
       resultsBody.innerHTML += `
-        <tr class="${rowClass}">
+        <tr>
           <td>${v.className}</td>
           <td>${v.quality}</td>
           <td>${v.spelling}</td>
@@ -186,18 +152,6 @@ onValue(ref(db, "votes"), snap => {
         </tr>`;
     });
 });
-
-/* 😭 infinite rain */
-function spawnCry() {
-  const c = document.createElement("div");
-  c.className = "cry-rain";
-  c.textContent = "😭";
-  c.style.left = Math.random() * 100 + "vw";
-  c.style.animationDuration = (4 + Math.random() * 4) + "s";
-  document.body.appendChild(c);
-  setTimeout(() => c.remove(), 9000);
-}
-setInterval(spawnCry, 300);
 </script>
 
 </body>
