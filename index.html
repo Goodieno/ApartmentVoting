@@ -13,11 +13,11 @@ body {
   text-align: center;
 }
 
-/* ================= WINNER OVERLAY ================= */
+/* ===== WINNER OVERLAY ===== */
 #winnerOverlay {
   position: fixed;
   inset: 0;
-  background: radial-gradient(circle at center, #222 0%, #000 70%);
+  background: radial-gradient(circle, #222 0%, #000 70%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -27,7 +27,6 @@ body {
 
 #winnerOverlay.hidden { display: none; }
 
-/* spotlight sweep */
 #winnerOverlay::before {
   content: "";
   position: absolute;
@@ -44,15 +43,14 @@ body {
 
 @keyframes spotlight {
   from { transform: translate(-50%, -50%) rotate(0deg); }
-  to   { transform: translate(-50%, -50%) rotate(360deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 .winnerBox {
-  position: relative;
+  background: rgba(0,0,0,0.65);
   color: white;
   padding: 44px;
   border-radius: 26px;
-  background: rgba(0,0,0,0.65);
   box-shadow: 0 0 60px gold;
   animation: popIn 0.9s ease-out;
   z-index: 10001;
@@ -65,8 +63,8 @@ body {
 
 .trophy {
   font-size: 4.5em;
-  text-shadow: 0 0 20px gold;
   animation: trophyBounce 1.6s ease-in-out infinite;
+  text-shadow: 0 0 20px gold;
 }
 
 @keyframes trophyBounce {
@@ -74,13 +72,7 @@ body {
   50% { transform: translateY(-16px); }
 }
 
-.winnerBox h1 {
-  font-size: 2.2em;
-  margin: 10px 0 6px;
-}
-
 .winnerBox h2 {
-  font-size: 2em;
   color: gold;
   animation: shimmer 2s infinite;
 }
@@ -91,43 +83,36 @@ body {
   100% { text-shadow: 0 0 6px gold; }
 }
 
-/* ================= CONFETTI (FIXED) ================= */
+/* ===== CONFETTI ===== */
 .confetti {
   position: fixed;
   top: -20px;
   width: 10px;
   height: 10px;
-  opacity: 0.9;
   animation: fall 4s linear infinite;
-  z-index: 10000;          /* ABOVE overlay */
-  pointer-events: none;   /* doesn't block clicks */
+  z-index: 10000;
+  pointer-events: none;
 }
 
 @keyframes fall {
   from { transform: translateY(-50px) rotate(0deg); }
-  to   { transform: translateY(120vh) rotate(720deg); }
+  to { transform: translateY(120vh) rotate(720deg); }
 }
 
-/* ================= NORMAL PAGE ================= */
-h1 { font-size: 1.7em; margin-bottom: 6px; }
-h2 { font-size: 1.3em; }
-
+/* ===== PAGE ===== */
 .panel {
   background: #fff;
   border-radius: 18px;
-  padding: 20px 16px;
+  padding: 20px;
   max-width: 900px;
   margin: 14px auto;
   box-shadow: 0 6px 18px rgba(0,0,0,0.08);
 }
 
-/* podium animation */
 .podium div {
-  font-size: 1.1em;
-  margin: 6px 0;
   font-weight: bold;
   opacity: 0;
-  animation: slideIn 0.6s ease-out forwards;
+  animation: slideIn 0.6s forwards;
 }
 
 .podium div:nth-child(1){animation-delay:.1s}
@@ -143,7 +128,6 @@ table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 14px;
-  font-size: 0.9em;
 }
 
 th, td {
@@ -151,16 +135,6 @@ th, td {
   padding: 6px;
 }
 
-tbody tr {
-  animation: rowFade 0.5s ease-out forwards;
-}
-
-@keyframes rowFade {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* highlight winning rows */
 tr.winnerRow {
   background: linear-gradient(90deg, #fff7cc, #fff1a8);
   animation: pulseGold 2s infinite;
@@ -176,24 +150,20 @@ tr.winnerRow {
 
 <body>
 
-<!-- WINNER OVERLAY -->
 <div id="winnerOverlay" class="hidden" onclick="this.classList.add('hidden')">
   <div class="winnerBox">
     <div class="trophy">🏆</div>
     <h1>최종 우승</h1>
     <h2 id="winnerName"></h2>
-    <p style="opacity:.75;">(화면을 누르면 닫힘)</p>
+    <p style="opacity:.7;">(화면을 누르면 닫힘)</p>
   </div>
 </div>
 
 <h1>5학년 아파트 투표 결과</h1>
-<p style="color:#2e7d32; font-weight:bold;">투표가 종료되었습니다</p>
-<div id="voteDate" style="margin-bottom:12px; color:#555;"></div>
+<div id="voteDate"></div>
 
 <div class="panel">
-  <h2>🏆 최종 순위</h2>
   <div class="podium" id="podium"></div>
-
   <table>
     <thead>
       <tr>
@@ -220,76 +190,63 @@ const app = initializeApp({
 });
 
 const db = getDatabase(app);
-const resultsBody = document.getElementById("resultsBody");
-const podium = document.getElementById("podium");
-const voteDate = document.getElementById("voteDate");
 const overlay = document.getElementById("winnerOverlay");
 const winnerName = document.getElementById("winnerName");
+const podium = document.getElementById("podium");
+const resultsBody = document.getElementById("resultsBody");
+const voteDate = document.getElementById("voteDate");
 
 onValue(ref(db, "votes"), snap => {
   const data = snap.val();
   if (!data) return;
 
-  resultsBody.innerHTML = "";
-  podium.innerHTML = "";
-
   const totals = {};
   const rows = [];
-  let displayDate = null;
+  let date = null;
 
   Object.values(data).forEach(v => {
-    if (!v.className) return;
     const sum = v.quality + v.spelling + v.creativity + v.english;
     totals[v.className] = (totals[v.className] || 0) + sum;
     rows.push({ ...v, sum });
-    if (!displayDate && v.time) displayDate = v.time;
+    if (!date) date = v.time;
   });
-
-  if (displayDate) {
-    const d = new Date(displayDate);
-    const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
-    voteDate.textContent = `투표일: ${weekday} ${d.getMonth()+1}.${d.getDate()}`;
-  }
 
   const ranking = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
 
-  if (ranking.length) {
-    winnerName.textContent = `${ranking[0][0]} (${ranking[0][1]}점)`;
-    overlay.classList.remove("hidden");
-    spawnConfetti();
+  winnerName.textContent = `${ranking[0][0]} (${ranking[0][1]}점)`;
+  overlay.classList.remove("hidden");
+  spawnConfetti();
+
+  podium.innerHTML = ranking.slice(0,3)
+    .map((r,i)=>`<div>${['🥇','🥈','🥉'][i]} ${r[0]} — ${r[1]}점</div>`)
+    .join("");
+
+  resultsBody.innerHTML = rows.map(v => `
+    <tr class="${v.className===ranking[0][0]?'winnerRow':''}">
+      <td>${v.className}</td>
+      <td>${v.quality}</td>
+      <td>${v.spelling}</td>
+      <td>${v.creativity}</td>
+      <td>${v.english}</td>
+      <td><b>${v.sum}</b></td>
+      <td>${new Date(v.time).getMonth()+1}.${new Date(v.time).getDate()}</td>
+    </tr>`).join("");
+
+  if (date) {
+    const d = new Date(date);
+    voteDate.textContent = `투표일: ${['일','월','화','수','목','금','토'][d.getDay()]} ${d.getMonth()+1}.${d.getDate()}`;
   }
-
-  ranking.slice(0,3).forEach((r,i)=>{
-    podium.innerHTML += `<div>${['🥇','🥈','🥉'][i]} ${r[0]} — ${r[1]}점</div>`;
-  });
-
-  rows.sort((a,b)=>a.time - b.time).forEach(v => {
-    const d = new Date(v.time);
-    const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
-    const isWinner = v.className === ranking[0][0];
-
-    resultsBody.innerHTML += `
-      <tr class="${isWinner ? 'winnerRow' : ''}">
-        <td>${v.className}</td>
-        <td>${v.quality}</td>
-        <td>${v.spelling}</td>
-        <td>${v.creativity}</td>
-        <td>${v.english}</td>
-        <td><b>${v.sum}</b></td>
-        <td>${weekday} ${d.getMonth()+1}.${d.getDate()}</td>
-      </tr>`;
-  });
 });
 
 function spawnConfetti() {
-  for (let i = 0; i < 100; i++) {
-    const c = document.createElement("div");
-    c.className = "confetti";
-    c.style.left = Math.random() * 100 + "vw";
-    c.style.background = ["gold","red","cyan","lime","magenta"][i % 5];
-    c.style.animationDelay = Math.random() * 3 + "s";
+  for (let i=0;i<80;i++){
+    const c=document.createElement("div");
+    c.className="confetti";
+    c.style.left=Math.random()*100+"vw";
+    c.style.background=["gold","red","cyan","lime","magenta"][i%5];
+    c.style.animationDelay=Math.random()*3+"s";
     document.body.appendChild(c);
-    setTimeout(() => c.remove(), 6000);
+    setTimeout(()=>c.remove(),6000);
   }
 }
 </script>
