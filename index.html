@@ -19,9 +19,7 @@ body {
   position: fixed;
   top: -40px;
   font-size: 2rem;
-  animation-name: cryFall;
-  animation-timing-function: linear;
-  animation-iteration-count: 1;
+  animation: cryFall linear 1;
   opacity: 0.6;
   pointer-events: none;
   z-index: 0;
@@ -63,10 +61,23 @@ th, td {
   font-weight: bold;
 }
 
-/* ⭐ Class 5 highlight */
+/* ⭐ 5반 row highlight */
 .class5 {
   background: #fff3cd;
   font-weight: bold;
+}
+
+/* ⭐ 5반 총점 style */
+.class5-total {
+  margin-top: 8px;
+  font-weight: bold;
+  font-size: 1.1em;
+  color: #ffeb3b;
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000;
 }
 </style>
 </head>
@@ -81,8 +92,7 @@ th, td {
   <h2>🏆 최종 순위</h2>
   <div class="podium" id="podium"></div>
 
-  <!-- ⭐ Class 5 total -->
-  <div id="class5Total" style="margin-top:8px; font-weight:bold;"></div>
+  <div id="class5Total" class="class5-total"></div>
 
   <table>
     <thead>
@@ -104,7 +114,7 @@ th, td {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-const TARGET_CLASS = "5반"; // ⭐ change here if needed
+const TARGET_CLASS = "5반";
 
 const app = initializeApp({
   apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
@@ -162,10 +172,10 @@ onValue(ref(db, "votes"), snap => {
       const d = new Date(v.time);
       const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
       const dateText = `${weekday} ${d.getMonth()+1}.${d.getDate()}`;
-      const cls = v.className === TARGET_CLASS ? "class5" : "";
+      const rowClass = v.className === TARGET_CLASS ? "class5" : "";
 
       resultsBody.innerHTML += `
-        <tr class="${cls}">
+        <tr class="${rowClass}">
           <td>${v.className}</td>
           <td>${v.quality}</td>
           <td>${v.spelling}</td>
@@ -177,7 +187,7 @@ onValue(ref(db, "votes"), snap => {
     });
 });
 
-/* 😭 endless rain */
+/* 😭 infinite rain */
 function spawnCry() {
   const c = document.createElement("div");
   c.className = "cry-rain";
