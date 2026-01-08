@@ -61,6 +61,14 @@ th, td {
   font-weight: bold;
 }
 
+/* 🔴 zero score text (same as podium, red) */
+.zero-score {
+  font-size: 1.1em;
+  margin: 6px 0;
+  font-weight: bold;
+  color: #d32f2f;
+}
+
 /* ⭐ 5반 row highlight */
 .class5 {
   background: #fff3cd;
@@ -90,7 +98,11 @@ th, td {
 
 <div class="panel">
   <h2>🏆 최종 순위</h2>
+
   <div class="podium" id="podium"></div>
+
+  <!-- 🔴 inserted text -->
+  <div class="zero-score">4반 - 0점</div>
 
   <div id="class5Total" class="class5-total"></div>
 
