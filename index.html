@@ -13,6 +13,67 @@ body {
   text-align: center;
 }
 
+/* ---------- WINNER OVERLAY ---------- */
+#winnerOverlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, #222 0%, #000 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: flashBg 2s infinite;
+}
+
+#winnerOverlay.hidden {
+  display: none;
+}
+
+.winnerBox {
+  color: white;
+  padding: 40px;
+  border-radius: 24px;
+  box-shadow: 0 0 40px gold;
+  background: rgba(0,0,0,0.6);
+}
+
+.winnerBox h1 {
+  font-size: 2.4em;
+  margin-bottom: 10px;
+  text-shadow: 0 0 12px gold;
+}
+
+.winnerBox h2 {
+  font-size: 2em;
+  color: gold;
+}
+
+@keyframes flashBg {
+  0% { box-shadow: inset 0 0 0 rgba(255,255,255,0); }
+  50% { box-shadow: inset 0 0 120px rgba(255,255,255,0.15); }
+  100% { box-shadow: inset 0 0 0 rgba(255,255,255,0); }
+}
+
+/* ---------- CONFETTI ---------- */
+.confetti {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: red;
+  animation: fall 4s linear infinite;
+  opacity: 0.9;
+}
+
+@keyframes fall {
+  0% {
+    transform: translateY(-100px) rotate(0deg);
+  }
+  100% {
+    transform: translateY(120vh) rotate(720deg);
+  }
+}
+
+/* ---------- NORMAL PAGE ---------- */
 h1 { font-size: 1.7em; margin-bottom: 6px; }
 h2 { font-size: 1.3em; }
 
@@ -25,8 +86,6 @@ h2 { font-size: 1.3em; }
   box-shadow: 0 6px 18px rgba(0,0,0,0.08);
 }
 
-.hidden { display: none; }
-
 table {
   width: 100%;
   border-collapse: collapse;
@@ -35,6 +94,138 @@ table {
 }
 
 th, td {
+  border: 1px solid #ccc;
+  padding: 6px;
+}
+
+.podium div {
+  font-size: 1.1em;
+  margin: 6px 0;
+  font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<!-- WINNER OVERLAY -->
+<div id="winnerOverlay" class="hidden" onclick="this.classList.add('hidden')">
+  <div class="winnerBox">
+    <h1>🏆 최종 우승!</h1>
+    <h2 id="winnerName"></h2>
+    <p style="opacity:.8;">(화면을 누르면 닫힙니다)</p>
+  </div>
+</div>
+
+<h1>5학년 아파트 투표 결과</h1>
+<p style="color:#2e7d32; font-weight:bold;">투표가 종료되었습니다</p>
+<div id="voteDate" style="margin-bottom:12px; color:#555;"></div>
+
+<div class="panel">
+  <h2>🏆 최종 순위</h2>
+  <div class="podium" id="podium"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>반</th>
+        <th>품질</th>
+        <th>맞춤법</th>
+        <th>창의성</th>
+        <th>영어</th>
+        <th>합계</th>
+        <th>날짜</th>
+      </tr>
+    </thead>
+    <tbody id="resultsBody"></tbody>
+  </table>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
+  databaseURL: "https://apartmentvoting-default-rtdb.firebaseio.com"
+});
+
+const db = getDatabase(app);
+const resultsBody = document.getElementById("resultsBody");
+const podium = document.getElementById("podium");
+const voteDate = document.getElementById("voteDate");
+const overlay = document.getElementById("winnerOverlay");
+const winnerName = document.getElementById("winnerName");
+
+onValue(ref(db, "votes"), snap => {
+  const data = snap.val();
+  if (!data) return;
+
+  resultsBody.innerHTML = "";
+  podium.innerHTML = "";
+
+  const totals = {};
+  const rows = [];
+  let displayDate = null;
+
+  Object.values(data).forEach(v => {
+    if (!v.className) return;
+    const sum = v.quality + v.spelling + v.creativity + v.english;
+    totals[v.className] = (totals[v.className] || 0) + sum;
+    rows.push({ ...v, sum });
+    if (!displayDate && v.time) displayDate = v.time;
+  });
+
+  if (displayDate) {
+    const d = new Date(displayDate);
+    const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
+    voteDate.textContent = `투표일: ${weekday} ${d.getMonth()+1}.${d.getDate()}`;
+  }
+
+  const ranking = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+
+  // 🎉 SHOW WINNER PAGE
+  if (ranking.length) {
+    winnerName.textContent = `${ranking[0][0]} (${ranking[0][1]}점)`;
+    overlay.classList.remove("hidden");
+    spawnConfetti();
+  }
+
+  ranking.slice(0,3).forEach((r,i)=>{
+    podium.innerHTML += `<div>${['🥇','🥈','🥉'][i]} ${r[0]} — ${r[1]}점</div>`;
+  });
+
+  rows.sort((a,b)=>a.time - b.time).forEach(v => {
+    const d = new Date(v.time);
+    const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
+    resultsBody.innerHTML += `
+      <tr>
+        <td>${v.className}</td>
+        <td>${v.quality}</td>
+        <td>${v.spelling}</td>
+        <td>${v.creativity}</td>
+        <td>${v.english}</td>
+        <td><b>${v.sum}</b></td>
+        <td>${weekday} ${d.getMonth()+1}.${d.getDate()}</td>
+      </tr>`;
+  });
+});
+
+function spawnConfetti() {
+  for (let i = 0; i < 80; i++) {
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.style.left = Math.random() * 100 + "vw";
+    c.style.background = ["gold","red","cyan","lime","magenta"][i%5];
+    c.style.animationDelay = Math.random() * 3 + "s";
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(), 6000);
+  }
+}
+</script>
+
+</body>
+</html>th, td {
   border: 1px solid #ccc;
   padding: 6px;
 }
