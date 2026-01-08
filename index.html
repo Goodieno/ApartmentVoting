@@ -28,9 +28,7 @@ body {
 }
 
 @keyframes cryFall {
-  to {
-    transform: translateY(110vh);
-  }
+  to { transform: translateY(110vh); }
 }
 
 h1 { font-size: 1.7em; margin-bottom: 6px; }
@@ -64,6 +62,12 @@ th, td {
   margin: 6px 0;
   font-weight: bold;
 }
+
+/* ⭐ Class 5 highlight */
+.class5 {
+  background: #fff3cd;
+  font-weight: bold;
+}
 </style>
 </head>
 
@@ -76,6 +80,9 @@ th, td {
 <div class="panel">
   <h2>🏆 최종 순위</h2>
   <div class="podium" id="podium"></div>
+
+  <!-- ⭐ Class 5 total -->
+  <div id="class5Total" style="margin-top:8px; font-weight:bold;"></div>
 
   <table>
     <thead>
@@ -97,7 +104,8 @@ th, td {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-// Firebase config
+const TARGET_CLASS = "5반"; // ⭐ change here if needed
+
 const app = initializeApp({
   apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
   databaseURL: "https://apartmentvoting-default-rtdb.firebaseio.com"
@@ -107,16 +115,15 @@ const db = getDatabase(app);
 const resultsBody = document.getElementById("resultsBody");
 const podium = document.getElementById("podium");
 const voteDate = document.getElementById("voteDate");
+const class5TotalBox = document.getElementById("class5Total");
 
 onValue(ref(db, "votes"), snap => {
   const data = snap.val();
-  if (!data) {
-    resultsBody.innerHTML = '<tr><td colspan="6">결과 없음</td></tr>';
-    return;
-  }
+  if (!data) return;
 
   resultsBody.innerHTML = "";
   podium.innerHTML = "";
+  class5TotalBox.textContent = "";
 
   const totals = {};
   const rows = [];
@@ -127,15 +134,15 @@ onValue(ref(db, "votes"), snap => {
 
     const sum = v.quality + v.spelling + v.creativity + v.english;
     totals[v.className] = (totals[v.className] || 0) + sum;
-
     rows.push({ ...v, sum });
+
     if (!displayDate && v.time) displayDate = v.time;
   });
 
   if (displayDate) {
     const d = new Date(displayDate);
     const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
-    voteDate.textContent = `투표일: ${weekday} ${d.getMonth() + 1}.${d.getDate()}`;
+    voteDate.textContent = `투표일: ${weekday} ${d.getMonth()+1}.${d.getDate()}`;
   }
 
   Object.entries(totals)
@@ -145,15 +152,20 @@ onValue(ref(db, "votes"), snap => {
       podium.innerHTML += `<div>${['🥇','🥈','🥉'][i]} ${r[0]} — ${r[1]}점</div>`;
     });
 
+  if (totals[TARGET_CLASS]) {
+    class5TotalBox.textContent = `${TARGET_CLASS} 총점: ${totals[TARGET_CLASS]}점`;
+  }
+
   rows
     .sort((a,b)=>a.time - b.time)
     .forEach(v => {
       const d = new Date(v.time);
       const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
       const dateText = `${weekday} ${d.getMonth()+1}.${d.getDate()}`;
+      const cls = v.className === TARGET_CLASS ? "class5" : "";
 
       resultsBody.innerHTML += `
-        <tr>
+        <tr class="${cls}">
           <td>${v.className}</td>
           <td>${v.quality}</td>
           <td>${v.spelling}</td>
@@ -165,7 +177,7 @@ onValue(ref(db, "votes"), snap => {
     });
 });
 
-/* 😭 Endless spawn loop */
+/* 😭 endless rain */
 function spawnCry() {
   const c = document.createElement("div");
   c.className = "cry-rain";
@@ -173,11 +185,8 @@ function spawnCry() {
   c.style.left = Math.random() * 100 + "vw";
   c.style.animationDuration = (4 + Math.random() * 4) + "s";
   document.body.appendChild(c);
-
   setTimeout(() => c.remove(), 9000);
 }
-
-/* spawn continuously forever */
 setInterval(spawnCry, 300);
 </script>
 
