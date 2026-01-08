@@ -11,6 +11,26 @@ body {
   margin: 12px;
   background: linear-gradient(180deg, #f4f6f8, #eef1f5);
   text-align: center;
+  overflow-x: hidden;
+}
+
+/* 😭 Endless crying rain */
+.cry-rain {
+  position: fixed;
+  top: -40px;
+  font-size: 2rem;
+  animation-name: cryFall;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes cryFall {
+  to {
+    transform: translateY(110vh);
+  }
 }
 
 h1 { font-size: 1.7em; margin-bottom: 6px; }
@@ -23,6 +43,8 @@ h2 { font-size: 1.3em; }
   max-width: 900px;
   margin: 14px auto;
   box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  position: relative;
+  z-index: 2;
 }
 
 table {
@@ -42,17 +64,6 @@ th, td {
   margin: 6px 0;
   font-weight: bold;
 }
-
-/* ⭐ Class 6 highlight (ONLY) */
-.my-class {
-  background: #fff9c4;
-  font-weight: bold;
-}
-
-.my-score {
-  color: #d32f2f;
-  font-weight: bold;
-}
 </style>
 </head>
 
@@ -65,9 +76,6 @@ th, td {
 <div class="panel">
   <h2>🏆 최종 순위</h2>
   <div class="podium" id="podium"></div>
-
-  <!-- Class 6 score shown clearly -->
-  <div id="myClassScore" style="margin-top:10px; font-size:1.1em;"></div>
 
   <table>
     <thead>
@@ -89,9 +97,7 @@ th, td {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-// 🔧 CHANGE THIS IF NEEDED
-const MY_CLASS = "6반";
-
+// Firebase config
 const app = initializeApp({
   apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
   databaseURL: "https://apartmentvoting-default-rtdb.firebaseio.com"
@@ -101,15 +107,16 @@ const db = getDatabase(app);
 const resultsBody = document.getElementById("resultsBody");
 const podium = document.getElementById("podium");
 const voteDate = document.getElementById("voteDate");
-const myClassScoreDiv = document.getElementById("myClassScore");
 
 onValue(ref(db, "votes"), snap => {
   const data = snap.val();
-  if (!data) return;
+  if (!data) {
+    resultsBody.innerHTML = '<tr><td colspan="6">결과 없음</td></tr>';
+    return;
+  }
 
   resultsBody.innerHTML = "";
   podium.innerHTML = "";
-  myClassScoreDiv.innerHTML = "";
 
   const totals = {};
   const rows = [];
@@ -120,18 +127,17 @@ onValue(ref(db, "votes"), snap => {
 
     const sum = v.quality + v.spelling + v.creativity + v.english;
     totals[v.className] = (totals[v.className] || 0) + sum;
-    rows.push({ ...v, sum });
 
+    rows.push({ ...v, sum });
     if (!displayDate && v.time) displayDate = v.time;
   });
 
   if (displayDate) {
     const d = new Date(displayDate);
     const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
-    voteDate.textContent = `투표일: ${weekday} ${d.getMonth()+1}.${d.getDate()}`;
+    voteDate.textContent = `투표일: ${weekday} ${d.getMonth() + 1}.${d.getDate()}`;
   }
 
-  // 🏆 Podium
   Object.entries(totals)
     .sort((a,b)=>b[1]-a[1])
     .slice(0,3)
@@ -139,33 +145,40 @@ onValue(ref(db, "votes"), snap => {
       podium.innerHTML += `<div>${['🥇','🥈','🥉'][i]} ${r[0]} — ${r[1]}점</div>`;
     });
 
-  // ⭐ My class score shown under podium
-  if (totals[MY_CLASS] !== undefined) {
-    myClassScoreDiv.innerHTML =
-      `⭐ 우리 반 (${MY_CLASS}) 점수: <span class="my-score">${totals[MY_CLASS]}점</span>`;
-  }
-
-  // Table (time order)
   rows
     .sort((a,b)=>a.time - b.time)
     .forEach(v => {
       const d = new Date(v.time);
       const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
       const dateText = `${weekday} ${d.getMonth()+1}.${d.getDate()}`;
-      const isMyClass = v.className === MY_CLASS;
 
       resultsBody.innerHTML += `
-        <tr class="${isMyClass ? 'my-class' : ''}">
+        <tr>
           <td>${v.className}</td>
           <td>${v.quality}</td>
           <td>${v.spelling}</td>
           <td>${v.creativity}</td>
           <td>${v.english}</td>
-          <td class="${isMyClass ? 'my-score' : ''}">${v.sum}</td>
+          <td><b>${v.sum}</b></td>
           <td>${dateText}</td>
         </tr>`;
     });
 });
+
+/* 😭 Endless spawn loop */
+function spawnCry() {
+  const c = document.createElement("div");
+  c.className = "cry-rain";
+  c.textContent = "😭";
+  c.style.left = Math.random() * 100 + "vw";
+  c.style.animationDuration = (4 + Math.random() * 4) + "s";
+  document.body.appendChild(c);
+
+  setTimeout(() => c.remove(), 9000);
+}
+
+/* spawn continuously forever */
+setInterval(spawnCry, 300);
 </script>
 
 </body>
