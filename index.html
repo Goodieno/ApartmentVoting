@@ -1,40 +1,54 @@
-<!DOCTYPE html><html lang="ko">
+<!DOCTYPE html>
+<html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>4학년 아파트 투표 결과</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
+<title>아파트 투표 결과</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
 body {
   font-family: Arial, sans-serif;
-  margin: 0;
+  margin: 12px;
   background: linear-gradient(180deg, #f4f6f8, #eef1f5);
   text-align: center;
   overflow-x: hidden;
 }
 
-h1 { font-size: 1.7em; margin: 16px 0 6px; }
+/* 🎉 Endless confetti rain */
+.confetti {
+  position: fixed;
+  top: -40px;
+  font-size: 1.8rem;
+  animation: confettiFall linear 1;
+  opacity: 0.8;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes confettiFall {
+  to {
+    transform: translateY(110vh) rotate(360deg);
+  }
+}
+
+h1 { font-size: 1.7em; margin-bottom: 6px; }
 h2 { font-size: 1.3em; }
 
 .panel {
   background: #fff;
   border-radius: 18px;
   padding: 20px 16px;
-  max-width: 980px;
+  max-width: 900px;
   margin: 14px auto;
   box-shadow: 0 6px 18px rgba(0,0,0,0.08);
   position: relative;
   z-index: 2;
 }
 
-.podium div {
-  font-size: 1.15em;
-  margin: 6px 0;
-  font-weight: bold;
-}
-
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 16px;
+  margin-top: 14px;
   font-size: 0.9em;
 }
 
@@ -43,29 +57,57 @@ th, td {
   padding: 6px;
 }
 
-th { background:#f1f3f6; }
-
-/* 😭 Crying face rain */
-.confetti {
-  position: fixed;
-  top: -40px;
-  font-size: 22px;
-  animation: fall linear infinite;
-  opacity: 0.95;
-  z-index: 1;
+.podium div {
+  font-size: 1.1em;
+  margin: 6px 0;
+  font-weight: bold;
 }
 
-@keyframes fall {
-  to { transform: translateY(110vh) rotate(360deg); }
+/* 🔴 zero score text */
+.zero-score {
+  font-size: 1.1em;
+  margin: 6px 0;
+  font-weight: bold;
+  color: #d32f2f;
 }
+
+/* ⭐ 2반 row highlight */
+.class2 {
+  background: #fff3cd;
+  font-weight: bold;
 }
-</style></head><body><h1>4학년 아파트 투표 결과</h1>
-<p style="color:#c62828; font-weight:bold;">4학년은 아직 점수가 없습니다</p><div class="panel">
-  <h2>🏆 종합 순위</h2>
+
+/* ⭐ 2반 총점 style */
+.class2-total {
+  margin-top: 8px;
+  font-weight: bold;
+  font-size: 1.1em;
+  color: #ffeb3b;
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000;
+}
+</style>
+</head>
+
+<body>
+
+<h1>5학년 아파트 투표 결과</h1>
+<p style="color:#2e7d32; font-weight:bold;">투표가 종료되었습니다</p>
+<div id="voteDate" style="margin-bottom:12px; color:#555;"></div>
+
+<div class="panel">
+  <h2>🏆 최종 순위</h2>
+
   <div class="podium" id="podium"></div>
-</div>
-</div><div class="panel">
-  <h2>📊 전체 투표 결과</h2>
+
+  <!-- 🔴 focus class -->
+  <div class="zero-score">2반 - 0점</div>
+
+  <div id="class2Total" class="class2-total"></div>
+
   <table>
     <thead>
       <tr>
@@ -80,9 +122,13 @@ th { background:#f1f3f6; }
     </thead>
     <tbody id="resultsBody"></tbody>
   </table>
-</div><script type="module">
+</div>
+
+<script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+const TARGET_CLASS = "2반";
 
 const app = initializeApp({
   apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
@@ -90,46 +136,60 @@ const app = initializeApp({
 });
 
 const db = getDatabase(app);
-const podium = document.getElementById('podium');
-const body = document.getElementById('resultsBody');
+const resultsBody = document.getElementById("resultsBody");
+const podium = document.getElementById("podium");
+const voteDate = document.getElementById("voteDate");
+const class2TotalBox = document.getElementById("class2Total");
 
-onValue(ref(db,'votes'), snap => {
-  const data = snap.val() || {};
+onValue(ref(db, "votes"), snap => {
+  const data = snap.val();
+  if (!data) return;
 
-  podium.innerHTML = '';
-  body.innerHTML = '';
+  resultsBody.innerHTML = "";
+  podium.innerHTML = "";
+  class2TotalBox.textContent = "";
 
   const totals = {};
   const rows = [];
+  let displayDate = null;
 
   Object.values(data).forEach(v => {
+    if (!v.className) return;
+
     const sum = v.quality + v.spelling + v.creativity + v.english;
     totals[v.className] = (totals[v.className] || 0) + sum;
-
     rows.push({ ...v, sum });
+
+    if (!displayDate && v.time) displayDate = v.time;
   });
 
-  // 🏆 Podium (class 4 fixed at 0, others real)
-  const sortedTotals = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+  if (displayDate) {
+    const d = new Date(displayDate);
+    const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
+    voteDate.textContent = `투표일: ${weekday} ${d.getMonth()+1}.${d.getDate()}`;
+  }
 
-  podium.innerHTML += '<div>🥇 4학년 — 0점</div>';
-  podium.innerHTML += '<div>🥈 4학년 — 0점</div>';
-  podium.innerHTML += '<div>🥉 4학년 — 0점</div>';
+  Object.entries(totals)
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0,3)
+    .forEach((r,i)=>{
+      podium.innerHTML += `<div>${['🥇','🥈','🥉'][i]} ${r[0]} — ${r[1]}점</div>`;
+    });
 
-  sortedTotals.forEach(([cls,score])=>{
-    podium.innerHTML += `<div>${cls} — ${score}점</div>`;
-  });
+  if (totals[TARGET_CLASS] !== undefined) {
+    class2TotalBox.textContent = `${TARGET_CLASS} 총점: ${totals[TARGET_CLASS]}점`;
+  }
 
-  // 📊 Table (ordered by date)
   rows
-    .sort((a,b)=>a.time-b.time)
+    .sort((a,b)=>a.time - b.time)
     .forEach(v => {
       const d = new Date(v.time);
       const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
       const dateText = `${weekday} ${d.getMonth()+1}.${d.getDate()}`;
+      const rowClass = v.className === TARGET_CLASS ? "class2" : "";
 
-      body.innerHTML += `
-        <tr>
+      resultsBody.innerHTML += `
+        <tr class="${rowClass}">
           <td>${v.className}</td>
           <td>${v.quality}</td>
           <td>${v.spelling}</td>
@@ -140,20 +200,21 @@ onValue(ref(db,'votes'), snap => {
         </tr>`;
     });
 });
-</script><script>
-// 🎉 Endless confetti rain
-const confettiEmojis = ['🎉','🎊','✨','🎈','⭐'];
+
+/* 🎉 infinite confetti rain */
+const confettiEmojis = ["🎉", "🎊"];
 
 function spawnConfetti() {
-  const c = document.createElement('div');
-  c.className = 'confetti';
-  c.textContent = confettiEmojis[Math.floor(Math.random()*confettiEmojis.length)];
-  c.style.left = Math.random() * 100 + 'vw';
-  c.style.animationDuration = (4 + Math.random() * 5) + 's';
-  c.style.fontSize = (16 + Math.random() * 20) + 'px';
+  const c = document.createElement("div");
+  c.className = "confetti";
+  c.textContent = confettiEmojis[Math.floor(Math.random() * confettiEmojis.length)];
+  c.style.left = Math.random() * 100 + "vw";
+  c.style.animationDuration = (4 + Math.random() * 4) + "s";
   document.body.appendChild(c);
-  setTimeout(() => c.remove(), 10000);
+  setTimeout(() => c.remove(), 9000);
 }
 setInterval(spawnConfetti, 250);
-</script></body>
+</script>
+
+</body>
 </html>
