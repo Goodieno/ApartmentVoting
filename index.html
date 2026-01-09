@@ -72,13 +72,13 @@ th, td {
 }
 
 /* ⭐ 2반 row highlight */
-.class2 {
+.class1 {
   background: #fff3cd;
   font-weight: bold;
 }
 
 /* ⭐ 2반 총점 style */
-.class2-total {
+.class1-total {
   margin-top: 8px;
   font-weight: bold;
   font-size: 1.1em;
@@ -106,7 +106,7 @@ th, td {
   <!-- 🔴 focus class -->
   <div class="zero-score"></div>
 
-  <div id="class2Total" class="class2-total"></div>
+  <div id="class1Total" class="class1-total"></div>
 
   <table>
     <thead>
@@ -139,7 +139,7 @@ const db = getDatabase(app);
 const resultsBody = document.getElementById("resultsBody");
 const podium = document.getElementById("podium");
 const voteDate = document.getElementById("voteDate");
-const class2TotalBox = document.getElementById("class2Total");
+const class1TotalBox = document.getElementById("class1Total");
 
 onValue(ref(db, "votes"), snap => {
   const data = snap.val();
@@ -147,7 +147,7 @@ onValue(ref(db, "votes"), snap => {
 
   resultsBody.innerHTML = "";
   podium.innerHTML = "";
-  class2TotalBox.textContent = "";
+  class1TotalBox.textContent = "";
 
   const totals = {};
   const rows = [];
@@ -177,7 +177,7 @@ onValue(ref(db, "votes"), snap => {
     });
 
   if (totals[TARGET_CLASS] !== undefined) {
-    class2TotalBox.textContent = `${TARGET_CLASS} 총점: ${totals[TARGET_CLASS]}점`;
+    class1TotalBox.textContent = `${TARGET_CLASS} 총점: ${totals[TARGET_CLASS]}점`;
   }
 
   rows
@@ -186,7 +186,7 @@ onValue(ref(db, "votes"), snap => {
       const d = new Date(v.time);
       const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
       const dateText = `${weekday} ${d.getMonth()+1}.${d.getDate()}`;
-      const rowClass = v.className === TARGET_CLASS ? "class2" : "";
+      const rowClass = v.className === TARGET_CLASS ? "class1" : "";
 
       resultsBody.innerHTML += `
         <tr class="${rowClass}">
