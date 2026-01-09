@@ -61,7 +61,7 @@ th, td {
   font-weight: bold;
 }
 
-/* 🔴 zero score text (same as podium, red) */
+/* 🔴 zero score (same style as podium) */
 .zero-score {
   font-size: 1.1em;
   margin: 6px 0;
@@ -69,14 +69,14 @@ th, td {
   color: #d32f2f;
 }
 
-/* ⭐ 5반 row highlight */
-.class5 {
+/* ⭐ 3반 row highlight */
+.class3 {
   background: #fff3cd;
   font-weight: bold;
 }
 
-/* ⭐ 5반 총점 style */
-.class5-total {
+/* ⭐ 3반 총점 style */
+.class3-total {
   margin-top: 8px;
   font-weight: bold;
   font-size: 1.1em;
@@ -101,10 +101,10 @@ th, td {
 
   <div class="podium" id="podium"></div>
 
-  <!-- 🔴 inserted text -->
-  <div class="zero-score">4반 - 0점</div>
+  <!-- 🔴 focus class zero score -->
+  <div class="zero-score">3반 - 0점</div>
 
-  <div id="class5Total" class="class5-total"></div>
+  <div id="class3Total" class="class3-total"></div>
 
   <table>
     <thead>
@@ -126,7 +126,7 @@ th, td {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-const TARGET_CLASS = "4반";
+const TARGET_CLASS = "3반";
 
 const app = initializeApp({
   apiKey: "AIzaSyD0tDXxueqQAkEYsNGDHUcQM5TWf2FKyyk",
@@ -137,7 +137,7 @@ const db = getDatabase(app);
 const resultsBody = document.getElementById("resultsBody");
 const podium = document.getElementById("podium");
 const voteDate = document.getElementById("voteDate");
-const class5TotalBox = document.getElementById("class5Total");
+const class3TotalBox = document.getElementById("class3Total");
 
 onValue(ref(db, "votes"), snap => {
   const data = snap.val();
@@ -145,7 +145,7 @@ onValue(ref(db, "votes"), snap => {
 
   resultsBody.innerHTML = "";
   podium.innerHTML = "";
-  class5TotalBox.textContent = "";
+  class3TotalBox.textContent = "";
 
   const totals = {};
   const rows = [];
@@ -174,8 +174,8 @@ onValue(ref(db, "votes"), snap => {
       podium.innerHTML += `<div>${['🥇','🥈','🥉'][i]} ${r[0]} — ${r[1]}점</div>`;
     });
 
-  if (totals[TARGET_CLASS]) {
-    class5TotalBox.textContent = `${TARGET_CLASS} 총점: ${totals[TARGET_CLASS]}점`;
+  if (totals[TARGET_CLASS] !== undefined) {
+    class3TotalBox.textContent = `${TARGET_CLASS} 총점: ${totals[TARGET_CLASS]}점`;
   }
 
   rows
@@ -184,7 +184,7 @@ onValue(ref(db, "votes"), snap => {
       const d = new Date(v.time);
       const weekday = ['일','월','화','수','목','금','토'][d.getDay()];
       const dateText = `${weekday} ${d.getMonth()+1}.${d.getDate()}`;
-      const rowClass = v.className === TARGET_CLASS ? "class5" : "";
+      const rowClass = v.className === TARGET_CLASS ? "class3" : "";
 
       resultsBody.innerHTML += `
         <tr class="${rowClass}">
